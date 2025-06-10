@@ -1,0 +1,3 @@
+# Ignorar configuración sensible
+back/target/
+**/application.yml
