@@ -1,7 +1,6 @@
 services:
-  - type: web
+  - type: worker
     name: irrigexback
-    runtime: java
     buildCommand: ./mvnw clean install
     startCommand: java -jar target/*.jar
     envVars:
