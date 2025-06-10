@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: irrigexback
+    env: java
+    buildCommand: ./mvnw clean install
+    startCommand: java -jar target/*.jar
+    envVars:
+      - key: JAVA_VERSION
+        value: 21
