@@ -1,8 +1,7 @@
 services:
-  - type: worker
+  - type: web
     name: irrigexback
-    buildCommand: ./mvnw clean install
-    startCommand: java -jar target/*.jar
-    envVars:
-      - key: JAVA_VERSION
-        value: 21
+    runtime: docker
+    repo: https://github.com/brianalbarracin/irrigexback
+    branch: main
+    dockerfilePath: Dockerfile
