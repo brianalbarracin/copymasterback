@@ -1,9 +1,7 @@
 services:
   - type: web
     name: irrigexback
-    runtime: java
-    buildCommand: mvn clean install
-    startCommand: java -jar target/tu-unidad-0.0.1-SNAPSHOT.jar
-    envVars:
-      - key: JAVA_VERSION
-        value: 21
+    runtime: docker
+    repo: https://github.com/brianalbarracin/irrigexback
+    branch: main
+    dockerfilePath: Dockerfile
