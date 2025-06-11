@@ -1,9 +1,14 @@
-FROM eclipse-temurin:21-jdk
+# Usa una imagen base con Java 21
+FROM eclipse-temurin:21-jdk-alpine
 
+# Directorio de trabajo dentro del contenedor
 WORKDIR /app
 
-COPY . /app
+# Copia el archivo JAR al contenedor
+COPY target/tu-unidad.jar app.jar
 
-RUN ./mvnw clean package -DskipTests
+# Expone el puerto de tu aplicación (según tu application.yml)
+EXPOSE 8787
 
-CMD ["java", "-jar", "$(ls target/*.jar | head -n 1)"]
+# Comando para ejecutar la aplicación
+ENTRYPOINT ["java", "-jar", "app.jar"]
