@@ -5,12 +5,16 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.util.TimeZone;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 
 @SpringBootApplication
 public class TuUnidadApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(TuUnidadApplication.class, args);
+		new SpringApplicationBuilder(TuUnidadApplication.class)
+				.web(WebApplicationType.SERVLET) // 👈 Fuerza aplicación web
+				.run(args);
 	}
 
 	@PostConstruct
