@@ -6,7 +6,7 @@ spring:
 
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://${POSTGRES_HOST:dpg-d14aj015pdvs73bc4aq0-a.oregon-postgres.render.com}:${POSTGRES_PORT:5432}/${POSTGRES_DB:dbirrigrx}
+    url: jdbc:postgresql://${POSTGRES_HOST:dpg-d14aj015pdvs73bc4aq0-a.oregon-postgres.render.com}:${POSTGRES_PORT:5432}/${POSTGRES_DB:dbirrigex}
     username: ${POSTGRES_USER:brian1016}
     password: ${POSTGRES_PASSWORD}
     hikari:
