@@ -3,6 +3,8 @@ package co.edu.sena.tu_unidad.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 @Data
 @Entity
