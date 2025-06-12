@@ -42,21 +42,24 @@ public class SecurityConfig {
                     return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/products/**",              // <-- LIBRE
-                                "/auth/login",
-                                "/auth/register",
-                                "/auth/oauth2/success",
-                                "/login/oauth2/**",
-                                "/categories/**",
-                                "/addresses/**",
-                                "/cart/**",
-                                "/orders/**",
-                                "/api/users/**",
-                                "/states"
-                        ).permitAll()
-                        .anyRequest().authenticated()  // <-- todo lo demás sí protegido
-                )
+                        .anyRequest().permitAll()  // TODO LIBRE
+                );
+                //.authorizeHttpRequests(auth -> auth
+                  //      .requestMatchers(
+                    //            "/products/**",              // <-- LIBRE
+                      //          "/auth/login",
+                        //        "/auth/register",
+                          //      "/auth/oauth2/success",
+                            //    "/login/oauth2/**",
+                             //   "/categories/**",
+                               // "/addresses/**",
+                              //  "/cart/**",
+                              //  "/orders/**",
+                              //  "/api/users/**",
+                              //  "/states"
+                       // ).permitAll()
+                        //.anyRequest().authenticated()  // <-- todo lo demás sí protegido
+                //)
                 //.oauth2Login(oauth2 -> oauth2
                        // .userInfoEndpoint(userInfo -> userInfo
                              //   .userService(customOAuth2UserService)
@@ -65,11 +68,11 @@ public class SecurityConfig {
                        //     response.sendRedirect("/auth/oauth2/success");
                        // })
                // )
-                .logout(logout -> logout
-                        .logoutSuccessUrl("https://irrigex-front.onrender.com")
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
-                );
+                //.logout(logout -> logout
+                  //      .logoutSuccessUrl("https://irrigex-front.onrender.com")
+                    //    .invalidateHttpSession(true)
+                      //  .deleteCookies("JSESSIONID")
+                //);
 
         return http.build();
     }
