@@ -11,6 +11,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import co.edu.sena.tu_unidad.service.CustomOAuth2UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -32,6 +33,14 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(request -> {
+                    var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+                    corsConfig.setAllowedOrigins(List.of("https://irrigex-front.onrender.com")); // tu frontend
+                    corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    corsConfig.setAllowedHeaders(List.of("*"));
+                    corsConfig.setAllowCredentials(true); // si usas sesiones o cookies
+                    return corsConfig;
+                }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login","/login/oauth2/**", "/auth/oauth2/success","/auth/oauth2/success","/auth/register", "/api/users/**","/products/**","/cart/**","/orders/**", "/addresses/**","/states").permitAll()  // tus endpoints públicos
                         .anyRequest().authenticated()
