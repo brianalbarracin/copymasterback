@@ -34,7 +34,7 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
-                    var config = new CorsConfiguration();
+                    CorsConfiguration config = new CorsConfiguration();
                     config.setAllowedOrigins(List.of("https://irrigex-front.onrender.com"));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
@@ -43,34 +43,32 @@ public class SecurityConfig {
                 }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
+                                "/products/**",              // <-- LIBRE
                                 "/auth/login",
                                 "/auth/register",
                                 "/auth/oauth2/success",
                                 "/login/oauth2/**",
-                                "/products/**",
                                 "/categories/**",
                                 "/addresses/**",
                                 "/cart/**",
                                 "/orders/**",
-                                "/reviews/**",
                                 "/api/users/**",
                                 "/states"
                         ).permitAll()
-                        .anyRequest().authenticated()
+                        .anyRequest().authenticated()  // <-- todo lo demás sí protegido
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
                         .successHandler((request, response, authentication) -> {
-                            System.out.println("✅ OAuth2 login exitoso");
                             response.sendRedirect("/auth/oauth2/success");
                         })
                 )
                 .logout(logout -> logout
                         .logoutSuccessUrl("https://irrigex-front.onrender.com")
-                        .deleteCookies("JSESSIONID")
                         .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
                 );
 
         return http.build();
