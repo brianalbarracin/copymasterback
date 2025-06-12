@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -34,38 +35,35 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(List.of("https://irrigex-front.onrender.com"));
+                    corsConfig.setAllowedOrigins(List.of("https://irrigex-front.onrender.com")); // tu frontend
                     corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     corsConfig.setAllowedHeaders(List.of("*"));
-                    corsConfig.setAllowCredentials(true);
+                    corsConfig.setAllowCredentials(true); // si usas sesiones o cookies
                     return corsConfig;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/auth/login",
-                                "/auth/register",
-                                "/auth/oauth2/success",
-                                "/login/oauth2/**",
-                                "/products/**",
-                                "/api/users/**",
-                                "/cart/**",
-                                "/orders/**",
-                                "/addresses/**",
-                                "/states",
-                                "/categories/**" // si tienes
-                        ).permitAll()
+                        .requestMatchers("/auth/login","/login/oauth2/**", "/auth/oauth2/success","/auth/oauth2/success","/auth/register", "/api/users/**","/products/**","/cart/**","/orders/**", "/addresses/**","/states").permitAll()  // tus endpoints públicos
                         .anyRequest().authenticated()
-                )
-                .oauth2Login(oauth2 -> oauth2
+                ).oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
                         .successHandler((request, response, authentication) -> {
                             System.out.println("✅ OAuth2 success handler ejecutado");
+
+                            // Redirige manualmente
                             response.sendRedirect("/auth/oauth2/success");
                         })
                 );
 
+
         return http.build();
     }
-}
+
+
+
+    // si usas jwt:
+    // .oauth2ResourceServer(oauth2 -> oauth2.jwt());
+
+  }
+
