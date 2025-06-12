@@ -57,17 +57,26 @@ public class ProductService {
                 .map(ProductImageEntity::getImageUrl)
                 .collect(Collectors.toList());
 
+        Long categoryId = null;
+        String categoryName = null;
+
+        if (entity.getCategory() != null) {
+            categoryId = entity.getCategory().getId();
+            categoryName = entity.getCategory().getName();
+        }
+
         return ProductDto.builder()
                 .id(entity.getId())
                 .name(entity.getName())
                 .description(entity.getDescription())
                 .price(entity.getPrice())
                 .stock(entity.getStock())
-                .categoryId(entity.getCategory().getId())
-                .categoryName(entity.getCategory().getName())
+                .categoryId(categoryId)
+                .categoryName(categoryName)
                 .imageUrls(imageUrls)
                 .build();
     }
+
 
     public ProductDto createProduct(ProductDto dto) {
         CategoryEntity category = categoryRepository.findById(dto.getCategoryId())
