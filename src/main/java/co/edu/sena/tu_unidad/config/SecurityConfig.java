@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import co.edu.sena.tu_unidad.service.CustomOAuth2UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
+import org.springframework.web.cors.CorsConfiguration;
 
 @Configuration
 public class SecurityConfig {
@@ -25,7 +26,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        return NoOpPasswordEncoder.getInstance(); // Cambiar a BCrypt en producción
     }
 
     @Bean
@@ -33,12 +34,12 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
-                    var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(List.of("https://irrigex-front.onrender.com"));
-                    corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    corsConfig.setAllowedHeaders(List.of("*"));
-                    corsConfig.setAllowCredentials(true);
-                    return corsConfig;
+                    var config = new CorsConfiguration();
+                    config.setAllowedOrigins(List.of("https://irrigex-front.onrender.com"));
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    config.setAllowedHeaders(List.of("*"));
+                    config.setAllowCredentials(true);
+                    return config;
                 }))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
@@ -47,12 +48,13 @@ public class SecurityConfig {
                                 "/auth/oauth2/success",
                                 "/login/oauth2/**",
                                 "/products/**",
-                                "/api/users/**",
+                                "/categories/**",
+                                "/addresses/**",
                                 "/cart/**",
                                 "/orders/**",
-                                "/addresses/**",
-                                "/states",
-                                "/categories/**" // si tienes
+                                "/reviews/**",
+                                "/api/users/**",
+                                "/states"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -61,12 +63,16 @@ public class SecurityConfig {
                                 .userService(customOAuth2UserService)
                         )
                         .successHandler((request, response, authentication) -> {
-                            System.out.println("✅ OAuth2 success handler ejecutado");
+                            System.out.println("✅ OAuth2 login exitoso");
                             response.sendRedirect("/auth/oauth2/success");
                         })
+                )
+                .logout(logout -> logout
+                        .logoutSuccessUrl("https://irrigex-front.onrender.com")
+                        .deleteCookies("JSESSIONID")
+                        .invalidateHttpSession(true)
                 );
 
         return http.build();
     }
 }
-
