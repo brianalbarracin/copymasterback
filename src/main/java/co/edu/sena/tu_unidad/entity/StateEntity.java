@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "states")
+@Table(name = "_states")
 public class StateEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

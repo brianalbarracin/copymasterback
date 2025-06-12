@@ -11,7 +11,7 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "order_items")
+@Table(name = "_order_items")
 public class SaleDetailEntity {
 
     @Id
