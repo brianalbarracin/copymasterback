@@ -57,14 +57,14 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()  // <-- todo lo demás sí protegido
                 )
-                .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService)
-                        )
-                        .successHandler((request, response, authentication) -> {
-                            response.sendRedirect("/auth/oauth2/success");
-                        })
-                )
+                //.oauth2Login(oauth2 -> oauth2
+                       // .userInfoEndpoint(userInfo -> userInfo
+                             //   .userService(customOAuth2UserService)
+                       // )
+                      //  .successHandler((request, response, authentication) -> {
+                       //     response.sendRedirect("/auth/oauth2/success");
+                       // })
+               // )
                 .logout(logout -> logout
                         .logoutSuccessUrl("https://irrigex-front.onrender.com")
                         .invalidateHttpSession(true)
