@@ -85,7 +85,7 @@ public class AuthController {
 
         // Redirigir al frontend con el token
         Long userId = entity.getId(); // Asegúrate de que no es null
-        response.sendRedirect("https://4041-186-86-110-246.ngrok-free.app/tuunidad-web/admin.html?token=" + jwt + "&email=" + email + "&id=" + userId);
+        response.sendRedirect("https://irrigexback.onrender.com/tuunidad-web/admin.html?token=" + jwt + "&email=" + email + "&id=" + userId);
 
     }
     @GetMapping("/login")
