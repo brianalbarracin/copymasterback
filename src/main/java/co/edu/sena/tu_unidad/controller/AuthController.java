@@ -109,7 +109,7 @@ public class AuthController {
 
         // Redirigir al frontend con el token
         Long userId = entity.getId(); // Asegúrate de que no es null
-        response.sendRedirect("https://irrigexback.onrender.com/tuunidad-web/admin.html?token=" + jwt + "&email=" + email + "&id=" + userId);
+        response.sendRedirect("https://irrigex-front.onrender.com/admin.html?token=" + jwt + "&email=" + email + "&id=" + userId);
 
     }
     @GetMapping("/login")
