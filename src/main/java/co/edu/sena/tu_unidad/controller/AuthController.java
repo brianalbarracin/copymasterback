@@ -16,6 +16,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import java.util.Map;
+import java.util.HashMap;
 import java.io.IOException;
 
 //@CrossOrigin(origins = "*")
@@ -41,11 +43,33 @@ public class AuthController {
 
     @PostMapping("/register")
     public ServerResponseDto register(@RequestBody UserDto request) {
+        // Verificar si el email ya existe antes de registrar
+        if (userRepository.existsByEmail(request.getEmail())) {
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .message("El correo electrónico ya está registrado")
+                    .data(null)
+                    .build();
+        }
+        
         UserDto response = userService.register(request);
         return ServerResponseDto.builder()
                 .status(HttpStatus.CREATED.value())
                 .message("User registered successfully")
                 .data(response)
+                .build();
+    }
+
+    @GetMapping("/check-email")
+    public ServerResponseDto checkEmailExists(@RequestParam String email) {
+        boolean exists = userRepository.existsByEmail(email);
+        Map<String, Boolean> responseData = new HashMap<>();
+        responseData.put("exists", exists);
+        
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message(exists ? "Email already exists" : "Email available")
+                .data(responseData)
                 .build();
     }
 
