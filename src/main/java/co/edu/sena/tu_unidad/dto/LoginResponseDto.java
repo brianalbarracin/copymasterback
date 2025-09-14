@@ -1,20 +1,21 @@
 package co.edu.sena.tu_unidad.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoginResponseDto {
     private Long id;
-    private String name;
-    private String email;
-    private String token;
+    private String username;
+    private String fullName;
     private String role;
+    private String token; // opcional, queda vacío si no usas JWT
 }
+
+
+// 

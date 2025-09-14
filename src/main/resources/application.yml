@@ -6,9 +6,9 @@ spring:
 
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://${POSTGRES_HOST:dpg-d14aj015pdvs73bc4aq0-a.oregon-postgres.render.com}:${POSTGRES_PORT:5432}/${POSTGRES_DB:dbirrigex}
-    username: ${POSTGRES_USER:brian1016}
-    password: ${POSTGRES_PASSWORD}
+    url: jdbc:postgresql://${POSTGRES_HOST:ddpg-d330nier433s73bdlnr0-a.oregon-postgres.render.com}:${POSTGRES_PORT:5432}/${POSTGRES_DB:dbcopymaster_zh9u}
+    username: ${POSTGRES_USER:dbcopymaster_zh9u_user}
+    password: ${POSTGRES_PASSWORD:MeO2lpTiNJdnBF3Jv9HwVdPHvh1U9zj0}
     hikari:
       maximum-pool-size: 5
 

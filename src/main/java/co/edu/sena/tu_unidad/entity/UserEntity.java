@@ -1,42 +1,36 @@
 package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import java.util.Date;
-import java.util.List;
+import lombok.*;
 
-@Data
+import java.time.OffsetDateTime;
+
 @Entity
-@Table(name = "_users")
+@Table(name = "users")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
-    private String email;
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    @Column(name = "password_hash", nullable = false)
     private String password;
+
+    private String fullName;
+    private String role;
     private String phone;
+    private String email;
+    private String identification;
 
-
-    @Column(name = "cedula")
-    private String cedula;
-
-    @Column(name = "created_at")
-    private Date createdAt;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<AddressEntity> addresses;
-
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    private List<CartItemEntity> cartItems;
-
-    @OneToMany(mappedBy = "user")
-    private List<OrderEntity> orders;
-
-    @OneToMany(mappedBy = "user")
-    private List<ReviewEntity> reviews;
-
-
+    private OffsetDateTime createdAt;
+    private OffsetDateTime lastLoginAt;
 }
 
+
+// 
