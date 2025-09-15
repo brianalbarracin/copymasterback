@@ -38,7 +38,12 @@ public class SecurityConfig {
                 return config;
             }))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**","/public/**").permitAll()
+                .requestMatchers("/auth/**","/public/**",
+                        "/technicians/**",
+                        "/mach/service-visits/**",
+                        "/machine-movements/**",
+                        "/meter-readings/**",
+                        "/customers/**").permitAll()
                 .anyRequest().authenticated()
             )
             .httpBasic();
