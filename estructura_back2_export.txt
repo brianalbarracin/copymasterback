@@ -1,0 +1,2088 @@
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\TuUnidadApplication.java =====
+package co.edu.sena.tu_unidad;
+
+import jakarta.annotation.PostConstruct;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import java.util.TimeZone;
+
+@SpringBootApplication
+public class TuUnidadApplication {
+
+    public static void main(String[] args) {
+        new SpringApplicationBuilder(TuUnidadApplication.class)
+                .web(WebApplicationType.SERVLET)
+                .run(args);
+    }
+
+    @PostConstruct
+    public void init() {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC-5"));
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\config\SecurityConfig.java =====
+package co.edu.sena.tu_unidad.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.web.cors.CorsConfiguration;
+
+import java.util.List;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(request -> {
+                CorsConfiguration config = new CorsConfiguration();
+                config.setAllowedOrigins(List.of("http://localhost:3000", "https://irrigex-front.onrender.com", "https://copymasterfront.onrender.com"));
+                config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+                config.setAllowedHeaders(List.of("*"));
+                config.setAllowCredentials(true);
+                return config;
+            }))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/auth/**","/public/**",
+                        "/technicians/**",
+                        "/mach/service-visits/**",
+                        "/machine-movements/**",
+                        "/meter-readings/**",
+                        "/customers/**").permitAll()
+                .anyRequest().authenticated()
+            )
+            .httpBasic();
+        return http.build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\AuthController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.LoginRequestDto;
+import co.edu.sena.tu_unidad.dto.LoginResponseDto;
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.service.AuthService;
+import co.edu.sena.tu_unidad.service.UserService;
+import co.edu.sena.tu_unidad.entity.UserEntity;
+import co.edu.sena.tu_unidad.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import co.edu.sena.tu_unidad.dto.UserDto;
+
+@RestController
+@RequestMapping("/auth")
+public class AuthController {
+
+    @Autowired
+    private AuthService authService;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private UserRepository userRepository;
+
+    @PostMapping("/login")
+    public ServerResponseDto login(@RequestBody LoginRequestDto request) {
+        try {
+            LoginResponseDto resp = authService.login(request);
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Login exitoso")
+                    .data(resp)
+                    .build();
+        } catch (Exception e) {
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.UNAUTHORIZED.value())
+                    .message("Credenciales inválidas: " + e.getMessage())
+                    .data(null)
+                    .build();
+        }
+    }
+
+    @PostMapping("/register")
+    public ServerResponseDto register(@RequestBody UserEntity user) {
+        if (userRepository.existsByUsername(user.getUsername())) {
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .message("El nombre de usuario ya existe")
+                    .data(null)
+                    .build();
+        }
+        UserDto dto = UserDto.builder()
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .phone(user.getPhone())
+                .build();
+        UserDto created = userService.register(dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Usuario registrado")
+                .data(created)
+                .build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\CustomerController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.CustomerDto;
+import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
+import co.edu.sena.tu_unidad.service.CustomerService;
+import co.edu.sena.tu_unidad.service.ServiceRequestService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/customers")
+@CrossOrigin(origins = "*") // habilita llamadas desde tu front
+public class CustomerController {
+
+    @Autowired
+    private CustomerService customerService;
+
+    @Autowired
+    private ServiceRequestService requestService;
+
+    private ResponseEntity<Map<String, Object>> buildResponse(int status, String message, Object data) {
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("status", status);
+        resp.put("message", message);
+        resp.put("data", data);
+        return ResponseEntity.status(status).body(resp);
+    }
+
+    // 🔹 Listar todos los clientes
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getAll() {
+        List<CustomerDto> customers = customerService.getAllCustomers();
+        return buildResponse(200, "Clientes obtenidos", customers);
+    }
+
+    // 🔹 Obtener un cliente por id
+    @GetMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> getById(@PathVariable Long id) {
+        CustomerDto c = customerService.getCustomerById(id);
+        if (c == null) {
+            return buildResponse(404, "Cliente no encontrado", null);
+        }
+        return buildResponse(200, "Cliente obtenido", c);
+    }
+
+    // 🔹 Crear cliente
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> create(@RequestBody CustomerDto dto) {
+        CustomerDto c = customerService.createCustomer(dto);
+        return buildResponse(201, "Cliente creado", c);
+    }
+
+    // 🔹 Actualizar cliente
+    @PutMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> update(@PathVariable Long id, @RequestBody CustomerDto dto) {
+        CustomerDto c = customerService.updateCustomer(id, dto);
+        if (c == null) {
+            return buildResponse(404, "Cliente no encontrado", null);
+        }
+        return buildResponse(200, "Cliente actualizado", c);
+    }
+
+    // 🔹 Eliminar cliente
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> delete(@PathVariable Long id) {
+        boolean ok = customerService.deleteCustomer(id);
+        if (!ok) {
+            return buildResponse(404, "Cliente no encontrado", null);
+        }
+        return buildResponse(200, "Cliente eliminado", true);
+    }
+
+    // 🔹 Obtener solicitudes asociadas a un cliente
+    @GetMapping("/{id}/requests")
+    public ResponseEntity<Map<String, Object>> getRequests(@PathVariable Long id) {
+        List<ServiceRequestEntity> requests = requestService.getRequestsByCustomer(id);
+        return buildResponse(200, "Solicitudes del cliente obtenidas", requests);
+    }
+}
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\MachineController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.MachineDto;
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.service.MachineService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/machines")
+public class MachineController {
+
+    @Autowired
+    private MachineService machineService;
+
+    @GetMapping
+    public ServerResponseDto getAll() {
+        List<MachineDto> list = machineService.getAllMachines();
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Máquinas obtenidas")
+                .data(list)
+                .build();
+    }
+
+    @GetMapping("/{id}")
+    public ServerResponseDto getById(@PathVariable Long id) {
+        MachineDto m = machineService.getMachineById(id);
+        return ServerResponseDto.builder()
+                .status(m != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
+                .message(m != null ? "Máquina encontrada" : "No encontrada")
+                .data(m)
+                .build();
+    }
+
+    @GetMapping("/search")
+    public ServerResponseDto searchByModel(@RequestParam String model) {
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Resultados")
+                .data(machineService.searchByModel(model))
+                .build();
+    }
+
+    @PostMapping
+    public ServerResponseDto create(@RequestBody MachineDto dto) {
+        MachineDto created = machineService.createMachine(dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Máquina creada")
+                .data(created)
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    public ServerResponseDto update(@PathVariable Long id, @RequestBody MachineDto dto) {
+        MachineDto updated = machineService.updateMachine(id, dto);
+        return ServerResponseDto.builder()
+                .status(updated != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
+                .message(updated != null ? "Máquina actualizada" : "No encontrada")
+                .data(updated)
+                .build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ServerResponseDto delete(@PathVariable Long id) {
+        machineService.deleteMachine(id);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Máquina eliminada")
+                .data(null)
+                .build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\MeterReadingController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/meter-readings")
+public class MeterReadingController {
+
+    @Autowired
+    private MeterReadingRepository repo;
+
+    @GetMapping("/machine/{machineId}")
+    public ServerResponseDto readingsByMachine(@PathVariable Long machineId) {
+        List<MeterReadingEntity> list = repo.findByMachineIdOrderByReadingDateDesc(machineId);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Lecturas")
+                .data(list)
+                .build();
+    }
+
+    @PostMapping
+    public ServerResponseDto create(@RequestBody MeterReadingEntity e) {
+        MeterReadingEntity saved = repo.save(e);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Lectura creada")
+                .data(saved)
+                .build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\PartController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.entity.PartEntity;
+import co.edu.sena.tu_unidad.repository.PartRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/parts")
+public class PartController {
+
+    @Autowired
+    private PartRepository repo;
+
+    @GetMapping
+    public ServerResponseDto getAll() {
+        List<PartEntity> parts = repo.findAll();
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Repuestos")
+                .data(parts)
+                .build();
+    }
+
+    @PostMapping
+    public ServerResponseDto create(@RequestBody PartEntity p) {
+        PartEntity saved = repo.save(p);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Repuesto creado")
+                .data(saved)
+                .build();
+    }
+}
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\ServiceRequestController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.dto.ServiceRequestDto;
+import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
+import co.edu.sena.tu_unidad.service.ServiceRequestService;
+import co.edu.sena.tu_unidad.service.ServiceVisitService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/service-requests")
+public class ServiceRequestController {
+
+    @Autowired
+    private ServiceRequestService service;
+
+    @Autowired
+    private ServiceVisitService visitService;
+
+    @GetMapping
+    public ServerResponseDto getAll() {
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Solicitudes obtenidas")
+                .data(service.getAllServiceRequests())
+                .build();
+    }
+
+    @GetMapping("/pending")
+    public ServerResponseDto getPending() {
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Pendientes")
+                .data(service.getPendingServiceRequests())
+                .build();
+    }
+
+    @GetMapping("/customer/{customerId}")
+    public ServerResponseDto byCustomer(@PathVariable Long customerId) {
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Solicitudes por cliente")
+                .data(service.getServiceRequestsByCustomer(customerId))
+                .build();
+    }
+
+    @PostMapping
+    public ServerResponseDto create(@RequestBody ServiceRequestDto dto) {
+        ServiceRequestDto created = service.createServiceRequest(dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Solicitud creada")
+                .data(created)
+                .build();
+    }
+
+    @PostMapping("/{requestId}/visit")
+    public ServerResponseDto addVisit(@PathVariable Long requestId, @RequestBody ServiceVisitEntity visit) {
+        // Endpoint simple que delega a serviceVisit
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Visita agregada (usa /visits para detalle)")
+                .data(null)
+                .build();
+    }
+
+    @PutMapping("/{requestId}/status")
+    public ServerResponseDto updateStatus(@PathVariable Long requestId, @RequestParam String status) {
+        ServiceRequestDto updated = service.updateServiceRequestStatus(requestId, status);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Estado actualizado")
+                .data(updated)
+                .build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\ServiceVisitController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.dto.ServiceVisitDto;
+import co.edu.sena.tu_unidad.service.ServiceVisitService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/visits")
+public class ServiceVisitController {
+
+    @Autowired
+    private ServiceVisitService service;
+
+    @PostMapping
+    public ServerResponseDto create(@RequestBody ServiceVisitDto dto) {
+        ServiceVisitDto created = service.createServiceVisit(dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Visita creada")
+                .data(created)
+                .build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\TechnicianController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.dto.TechnicianDto;
+import co.edu.sena.tu_unidad.service.TechnicianService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/technicians")
+public class TechnicianController {
+
+    @Autowired
+    private TechnicianService technicianService;
+
+    @GetMapping
+    public ServerResponseDto getAll() {
+        List<TechnicianDto> list = technicianService.getAllTechnicians();
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Técnicos obtenidos")
+                .data(list)
+                .build();
+    }
+
+    @GetMapping("/{id}")
+    public ServerResponseDto getById(@PathVariable Long id) {
+        TechnicianDto t = technicianService.getTechnicianById(id);
+        return ServerResponseDto.builder()
+                .status(t != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
+                .message(t != null ? "Técnico encontrado" : "No encontrado")
+                .data(t)
+                .build();
+    }
+
+    @PostMapping
+    public ServerResponseDto create(@RequestBody TechnicianDto dto) {
+        TechnicianDto created = technicianService.createTechnician(dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Técnico creado")
+                .data(created)
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    public ServerResponseDto update(@PathVariable Long id, @RequestBody TechnicianDto dto) {
+        TechnicianDto updated = technicianService.updateTechnician(id, dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Técnico actualizado")
+                .data(updated)
+                .build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\CustomerDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.*;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class CustomerDto {
+    private Long id;
+    private String nit;
+    private String name;
+    private String contactName;
+    private String phone;
+    private String email;
+    private String address;
+}
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\LoginRequestDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class LoginRequestDto {
+    private String username;
+    private String password;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\LoginResponseDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class LoginResponseDto {
+    private Long id;
+    private String username;
+    private String fullName;
+    private String role;
+    private String token; // opcional, queda vacío si no usas JWT
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\MachineDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class MachineDto {
+    private Long id;
+    private String companySerial;
+    private String companyNumber;
+    private String model;
+    private String brand;
+    private Integer year;
+    private Long currentLocationId;
+    private String status;
+    private Long currentCustomerId;
+    private String notes;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ServerResponseDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class ServerResponseDto {
+    private int status;
+    private String message;
+    private Object data;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ServiceRequestDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.OffsetDateTime;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class ServiceRequestDto {
+    private Long id;
+    private String requestNumber;
+    private Long customerId;
+    private Long machineId;
+    private String companySerial;
+    private String companyNumber;
+    private Long createdByUserId;
+    private OffsetDateTime reportedAt;
+    private String reportedChannel;
+    private String serviceType;
+    private String description;
+    private String rootCause;
+    private String status;
+    private Boolean isRepeated;
+    private Long repeatedOfRequestId;
+    private Long assignedTechnicianId;
+    private OffsetDateTime assignedAt;
+    private OffsetDateTime closedAt;
+    private String resolution;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ServiceVisitDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.OffsetDateTime;
+import java.util.Map;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class ServiceVisitDto {
+    private Long id;
+    private Long serviceRequestId;
+    private OffsetDateTime visitDatetime;
+    private Long technicianId;
+    private String visitNotes;
+    private Map<String, Object> partsUsed;
+    private Long meterReadingBefore;
+    private Long meterReadingAfter;
+    private Boolean solved;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\TechnicianDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class TechnicianDto {
+    private Long id;
+    private String identification;
+    private String fullName;
+    private String phone;
+    private String email;
+    private Boolean active;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\UserDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class UserDto {
+    private Long id;
+    private String username;
+    private String email;
+    private String fullName;
+    private String role;
+    private String phone;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\CustomerEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "customers")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class CustomerEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true)
+    private String nit;   // puede ser null si es persona natural
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(name = "contact_name")
+    private String contactName;
+
+    private String phone;
+
+    private String email;
+
+    private String address;
+
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\LocationEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "locations")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class LocationEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true)
+    private String code;
+
+    private String name;
+    private String description;
+    private String address;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\MachineEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "machines")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class MachineEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "company_serial", unique = true)
+    private String companySerial;
+
+    @Column(name = "company_number", unique = true)
+    private String companyNumber;
+
+    private String model;
+    private String brand;
+    private Integer year;
+
+    @Column(name = "current_location_id")
+    private Long currentLocationId;
+
+    private String status;
+
+    @Column(name = "current_customer_id")
+    private Long currentCustomerId;
+
+    private OffsetDateTime purchaseDate;
+    private OffsetDateTime createdAt;
+    private String notes;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\MachineMovementEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "machine_movements")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class MachineMovementEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private Long machineId;
+    private Long fromLocationId;
+    private Long toLocationId;
+    private String movementType;
+    private OffsetDateTime effectiveDate;
+    private String reason;
+    private Long relatedContractId;
+    private Long createdByUserId;
+    private OffsetDateTime createdAt;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\MeterReadingEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "meter_readings")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class MeterReadingEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private Long machineId;
+    private Long reading;
+    private OffsetDateTime readingDate;
+    private Long technicianId;
+    private String notes;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\PartEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "parts")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class PartEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String sku;
+    private String brand;
+    private String modelCompatibility;
+    private String name;
+    private String partType;
+    private Integer stock;
+    private java.math.BigDecimal unitPrice;
+    private String notes;
+    private OffsetDateTime createdAt;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\ServiceRequestEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "service_requests")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class ServiceRequestEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true)
+    private String requestNumber;
+
+    private Long customerId;
+    private Long machineId;
+    private String companySerial;
+    private String companyNumber;
+    private Long createdByUserId;
+    private OffsetDateTime reportedAt;
+    private String reportedChannel;
+    private String serviceType;
+    @Column(columnDefinition = "text")
+    private String description;
+    private String rootCause;
+    private String status;
+    private Boolean isRepeated;
+    private Long repeatedOfRequestId;
+    private Long assignedTechnicianId;
+    private OffsetDateTime assignedAt;
+    private OffsetDateTime closedAt;
+    @Column(columnDefinition = "text")
+    private String resolution;
+    private OffsetDateTime createdAt;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\ServiceVisitEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "service_visits")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class ServiceVisitEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private Long serviceRequestId;
+    private OffsetDateTime visitDatetime;
+    private Long technicianId;
+    private String visitNotes;
+
+    @Column(columnDefinition = "jsonb")
+    private String partsUsed; // store JSON string
+
+    private Long meterReadingBefore;
+    private Long meterReadingAfter;
+    private Boolean solved;
+    private OffsetDateTime createdAt;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\TechnicianEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.OffsetDateTime;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "technicians")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class TechnicianEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String identification;
+    private String fullName;
+    private String phone;
+    private String email;
+    private String address;
+    private LocalDate hireDate;
+    private Boolean active;
+    private String certifications;
+    private OffsetDateTime createdAt;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\UserEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "users")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class UserEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String username;
+
+    @Column(name = "password_hash", nullable = false)
+    private String password;
+
+    private String fullName;
+    private String role;
+    private String phone;
+    private String email;
+    private String identification;
+
+    private OffsetDateTime createdAt;
+    private OffsetDateTime lastLoginAt;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\CustomerRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.CustomerEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> {
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\LocationRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.LocationEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface LocationRepository extends JpaRepository<LocationEntity, Long> {
+    Optional<LocationEntity> findByCode(String code);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\MachineRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.MachineEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface MachineRepository extends JpaRepository<MachineEntity, Long> {
+    Optional<MachineEntity> findByCompanySerial(String companySerial);
+    Optional<MachineEntity> findByCompanyNumber(String companyNumber);
+    List<MachineEntity> findByModel(String model);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\MeterReadingRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface MeterReadingRepository extends JpaRepository<MeterReadingEntity, Long> {
+    List<MeterReadingEntity> findByMachineIdOrderByReadingDateDesc(Long machineId);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\PartRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.PartEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PartRepository extends JpaRepository<PartEntity, Long> {
+    PartEntity findBySku(String sku);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\ServiceRequestRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+@Repository
+public interface ServiceRequestRepository extends JpaRepository<ServiceRequestEntity, Long> {
+    List<ServiceRequestEntity> findByMachineId(Long machineId);
+    List<ServiceRequestEntity> findByCustomerId(Long customerId);
+    List<ServiceRequestEntity> findByReportedAtBetween(OffsetDateTime start, OffsetDateTime end);
+    ServiceRequestEntity findTopByMachineIdAndRootCauseAndReportedAtAfterOrderByReportedAtAsc(Long machineId, String rootCause, OffsetDateTime after);
+
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\ServiceVisitRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity, Long> {
+    List<ServiceVisitEntity> findByServiceRequestId(Long serviceRequestId);
+    List<ServiceVisitEntity> findByTechnicianId(Long technicianId);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\TechnicianRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.TechnicianEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface TechnicianRepository extends JpaRepository<TechnicianEntity, Long> {
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\UserRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.UserEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
+    Optional<UserEntity> findByUsername(String username);
+    boolean existsByUsername(String username);
+    Optional<UserEntity> findByEmail(String email);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\AuthService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.LoginRequestDto;
+import co.edu.sena.tu_unidad.dto.LoginResponseDto;
+
+public interface AuthService {
+    LoginResponseDto login(LoginRequestDto request) throws Exception;
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\CustomerService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.CustomerDto;
+import java.util.List;
+
+public interface CustomerService {
+    List<CustomerDto> getAllCustomers();
+    CustomerDto getCustomerById(Long id);
+    CustomerDto createCustomer(CustomerDto dto);
+    CustomerDto updateCustomer(Long id, CustomerDto dto);
+    boolean deleteCustomer(Long id);
+}
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\MachineService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.MachineDto;
+
+import java.util.List;
+
+public interface MachineService {
+    List<MachineDto> getAllMachines();
+    MachineDto getMachineById(Long id);
+    MachineDto createMachine(MachineDto dto);
+    MachineDto updateMachine(Long id, MachineDto dto);
+    void deleteMachine(Long id);
+    List<MachineDto> searchByModel(String model);
+    MachineDto findByCompanySerial(String serial);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\ServiceRequestService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.ServiceRequestDto;
+import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+public interface ServiceRequestService {
+    List<ServiceRequestDto> getAllServiceRequests();
+    List<ServiceRequestDto> getPendingServiceRequests();
+    ServiceRequestDto getServiceRequestById(Long id);
+    ServiceRequestDto createServiceRequest(ServiceRequestDto dto);
+    ServiceRequestDto updateServiceRequestStatus(Long id, String status);
+    List<ServiceRequestDto> getServiceRequestsByCustomer(Long customerId);
+    List<ServiceRequestDto> getServiceRequestsByMachine(Long machineId);
+    // agrega métodos útiles para repetidos y reportes
+    List<ServiceRequestEntity> getRequestsByCustomer(Long customerId);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\ServiceVisitService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.ServiceVisitDto;
+
+import java.util.List;
+
+public interface ServiceVisitService {
+    ServiceVisitDto createServiceVisit(ServiceVisitDto dto);
+    List<ServiceVisitDto> getVisitsByRequest(Long requestId);
+    List<ServiceVisitDto> getVisitsByTechnician(Long technicianId);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\TechnicianService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.TechnicianDto;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+
+public interface TechnicianService {
+    List<TechnicianDto> getAllTechnicians();
+    TechnicianDto getTechnicianById(Long id);
+    TechnicianDto createTechnician(TechnicianDto dto);
+    TechnicianDto updateTechnician(Long id, TechnicianDto dto);
+    Object getTechnicianPerformance(Long id, OffsetDateTime startDate, OffsetDateTime endDate);
+    Object getTechniciansComparison(OffsetDateTime startDate, OffsetDateTime endDate);
+    void deleteTechnician(Long id);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\UserService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.UserDto;
+
+import java.util.List;
+
+public interface UserService {
+    UserDto getUserById(Long id);
+    UserDto getUserByEmail(String email);
+    UserDto register(UserDto dto);
+    UserDto updateUser(Long id, UserDto dto);
+    void deleteUser(Long id);
+    List<UserDto> getAllUsers();
+    boolean changePassword(Long id, String oldPassword, String newPassword);
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\AuthServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.LoginRequestDto;
+import co.edu.sena.tu_unidad.dto.LoginResponseDto;
+import co.edu.sena.tu_unidad.entity.UserEntity;
+import co.edu.sena.tu_unidad.repository.UserRepository;
+import co.edu.sena.tu_unidad.service.AuthService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AuthServiceImpl implements AuthService {
+
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private PasswordEncoder encoder;
+
+    @Override
+    public LoginResponseDto login(LoginRequestDto request) throws Exception {
+        UserEntity u = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new Exception("Usuario no encontrado"));
+        if (!encoder.matches(request.getPassword(), u.getPassword())) {
+            throw new Exception("Clave inválida");
+        }
+        // token omitted (no JWT). If quieres token, lo añadimos aquí.
+        return LoginResponseDto.builder()
+                .id(u.getId())
+                .username(u.getUsername())
+                .fullName(u.getFullName())
+                .role(u.getRole())
+                .token(null)
+                .build();
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\CustomerServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.CustomerDto;
+import co.edu.sena.tu_unidad.entity.CustomerEntity;
+import co.edu.sena.tu_unidad.repository.CustomerRepository;
+import co.edu.sena.tu_unidad.service.CustomerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class CustomerServiceImpl implements CustomerService {
+
+    @Autowired
+    private CustomerRepository repo;
+
+    private CustomerDto toDto(CustomerEntity e) {
+        if (e == null) return null;
+        return CustomerDto.builder()
+                .id(e.getId())
+                .nit(e.getNit())
+                .name(e.getName())
+                .contactName(e.getContactName())
+                .phone(e.getPhone())
+                .email(e.getEmail())
+                .address(e.getAddress())
+                .build();
+    }
+
+    @Override
+    public List<CustomerDto> getAllCustomers() {
+        return repo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public CustomerDto getCustomerById(Long id) {
+        return repo.findById(id).map(this::toDto).orElse(null);
+    }
+
+    @Override
+    public CustomerDto createCustomer(CustomerDto dto) {
+        CustomerEntity e = new CustomerEntity();
+        e.setNit(dto.getNit());
+        e.setName(dto.getName());
+        e.setContactName(dto.getContactName());
+        e.setPhone(dto.getPhone());
+        e.setEmail(dto.getEmail());
+        e.setAddress(dto.getAddress());
+        e.setCreatedAt(OffsetDateTime.now());
+        e = repo.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public CustomerDto updateCustomer(Long id, CustomerDto dto) {
+        CustomerEntity e = repo.findById(id).orElse(null);
+        if (e == null) return null;
+        e.setNit(dto.getNit());
+        e.setName(dto.getName());
+        e.setContactName(dto.getContactName());
+        e.setPhone(dto.getPhone());
+        e.setEmail(dto.getEmail());
+        e.setAddress(dto.getAddress());
+        repo.save(e);
+        return toDto(e);
+    }
+
+    @Autowired
+    private CustomerRepository repository;
+
+    @Override
+    public boolean deleteCustomer(Long id) {
+        if (!repository.existsById(id)) return false;
+        repository.deleteById(id);
+        return true;
+    }
+}
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\MachineServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.MachineDto;
+import co.edu.sena.tu_unidad.entity.MachineEntity;
+import co.edu.sena.tu_unidad.repository.MachineRepository;
+import co.edu.sena.tu_unidad.repository.LocationRepository;
+import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
+import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import co.edu.sena.tu_unidad.service.MachineService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class MachineServiceImpl implements MachineService {
+
+    @Autowired
+    private MachineRepository machineRepository;
+
+    @Autowired
+    private LocationRepository locationRepository;
+
+    @Autowired
+    private MeterReadingRepository meterReadingRepository;
+
+    private MachineDto toDto(MachineEntity e) {
+        if (e == null) return null;
+        return MachineDto.builder()
+                .id(e.getId())
+                .companySerial(e.getCompanySerial())
+                .companyNumber(e.getCompanyNumber())
+                .model(e.getModel())
+                .brand(e.getBrand())
+                .year(e.getYear())
+                .currentLocationId(e.getCurrentLocationId())
+                .status(e.getStatus())
+                .currentCustomerId(e.getCurrentCustomerId())
+                .notes(e.getNotes())
+                .build();
+    }
+
+    @Override
+    public List<MachineDto> getAllMachines() {
+        return machineRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public MachineDto getMachineById(Long id) {
+        return machineRepository.findById(id).map(this::toDto).orElse(null);
+    }
+
+    @Override
+    public MachineDto createMachine(MachineDto dto) {
+        MachineEntity e = new MachineEntity();
+        e.setCompanySerial(dto.getCompanySerial());
+        e.setCompanyNumber(dto.getCompanyNumber());
+        e.setModel(dto.getModel());
+        e.setBrand(dto.getBrand());
+        e.setYear(dto.getYear());
+        e.setCurrentLocationId(dto.getCurrentLocationId());
+        e.setStatus(dto.getStatus() != null ? dto.getStatus() : "bodega");
+        e.setCurrentCustomerId(dto.getCurrentCustomerId());
+        e.setPurchaseDate(null);
+        e.setCreatedAt(OffsetDateTime.now());
+        e.setNotes(dto.getNotes());
+        e = machineRepository.save(e);
+
+        // crear lectura inicial si viene en dto.currentCustomerId? (ejemplo)
+        MeterReadingEntity mr = MeterReadingEntity.builder()
+                .machineId(e.getId())
+                .reading(0L)
+                .readingDate(OffsetDateTime.now())
+                .build();
+        meterReadingRepository.save(mr);
+
+        return toDto(e);
+    }
+
+    @Override
+    public MachineDto updateMachine(Long id, MachineDto dto) {
+        MachineEntity e = machineRepository.findById(id).orElse(null);
+        if (e == null) return null;
+        e.setModel(dto.getModel());
+        e.setBrand(dto.getBrand());
+        e.setCompanyNumber(dto.getCompanyNumber());
+        e.setCurrentLocationId(dto.getCurrentLocationId());
+        e.setStatus(dto.getStatus());
+        e.setNotes(dto.getNotes());
+        machineRepository.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public void deleteMachine(Long id) {
+        machineRepository.deleteById(id);
+    }
+
+    @Override
+    public List<MachineDto> searchByModel(String model) {
+        return machineRepository.findByModel(model).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public MachineDto findByCompanySerial(String serial) {
+        return machineRepository.findByCompanySerial(serial).map(this::toDto).orElse(null);
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ServiceRequestServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.ServiceRequestDto;
+import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
+import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
+import co.edu.sena.tu_unidad.service.ServiceRequestService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
+
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class ServiceRequestServiceImpl implements ServiceRequestService {
+
+    @Autowired
+    private ServiceRequestRepository repo;
+
+    private ServiceRequestDto toDto(ServiceRequestEntity e) {
+        if (e == null) return null;
+        return ServiceRequestDto.builder()
+                .id(e.getId())
+                .requestNumber(e.getRequestNumber())
+                .customerId(e.getCustomerId())
+                .machineId(e.getMachineId())
+                .companySerial(e.getCompanySerial())
+                .companyNumber(e.getCompanyNumber())
+                .createdByUserId(e.getCreatedByUserId())
+                .reportedAt(e.getReportedAt())
+                .reportedChannel(e.getReportedChannel())
+                .serviceType(e.getServiceType())
+                .description(e.getDescription())
+                .rootCause(e.getRootCause())
+                .status(e.getStatus())
+                .isRepeated(e.getIsRepeated())
+                .repeatedOfRequestId(e.getRepeatedOfRequestId())
+                .assignedTechnicianId(e.getAssignedTechnicianId())
+                .assignedAt(e.getAssignedAt())
+                .closedAt(e.getClosedAt())
+                .resolution(e.getResolution())
+                .build();
+    }
+
+    @Override
+    public List<ServiceRequestDto> getAllServiceRequests() {
+        return repo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ServiceRequestDto> getPendingServiceRequests() {
+        return repo.findAll().stream()
+                .filter(r -> r.getStatus() == null || r.getStatus().equalsIgnoreCase("abierto"))
+                .map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public ServiceRequestDto getServiceRequestById(Long id) {
+        return repo.findById(id).map(this::toDto).orElse(null);
+    }
+
+    @Override
+    public ServiceRequestDto createServiceRequest(ServiceRequestDto dto) {
+        ServiceRequestEntity e = new ServiceRequestEntity();
+        e.setRequestNumber(dto.getRequestNumber() != null ? dto.getRequestNumber() : "SR-" + System.currentTimeMillis());
+        e.setCustomerId(dto.getCustomerId());
+        e.setMachineId(dto.getMachineId());
+        e.setCompanySerial(dto.getCompanySerial());
+        e.setCompanyNumber(dto.getCompanyNumber());
+        e.setCreatedByUserId(dto.getCreatedByUserId());
+        e.setReportedAt(dto.getReportedAt() != null ? dto.getReportedAt() : OffsetDateTime.now());
+        e.setReportedChannel(dto.getReportedChannel());
+        e.setServiceType(dto.getServiceType());
+        e.setDescription(dto.getDescription());
+        e.setRootCause(dto.getRootCause());
+        e.setStatus(dto.getStatus() != null ? dto.getStatus() : "abierto");
+        e.setIsRepeated(false);
+        e.setCreatedAt(OffsetDateTime.now());
+
+        // lógica básica para marcar repetido (ejemplo: buscar anterior en 30 días)
+        if (e.getMachineId() != null && e.getRootCause() != null) {
+            OffsetDateTime threshold = e.getReportedAt().minus(30, ChronoUnit.DAYS);
+            ServiceRequestEntity prior = repo.findTopByMachineIdAndRootCauseAndReportedAtAfterOrderByReportedAtAsc(e.getMachineId(), e.getRootCause(), threshold);
+            if (prior != null) {
+                e.setIsRepeated(true);
+                e.setRepeatedOfRequestId(prior.getId());
+            }
+        }
+
+        e = repo.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public ServiceRequestDto updateServiceRequestStatus(Long id, String status) {
+        ServiceRequestEntity e = repo.findById(id).orElse(null);
+        if (e == null) return null;
+        e.setStatus(status);
+        if ("cerrado".equalsIgnoreCase(status) || "solved".equalsIgnoreCase(status)) {
+            e.setClosedAt(OffsetDateTime.now());
+        }
+        repo.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public List<ServiceRequestDto> getServiceRequestsByCustomer(Long customerId) {
+        return repo.findByCustomerId(customerId).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ServiceRequestDto> getServiceRequestsByMachine(Long machineId) {
+        return repo.findByMachineId(machineId).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Autowired
+    private ServiceRequestRepository repository;
+    
+    @Override
+    public List<ServiceRequestEntity> getRequestsByCustomer(Long customerId) {
+        return repository.findByCustomerId(customerId);
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ServiceVisitServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.ServiceVisitDto;
+import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
+import co.edu.sena.tu_unidad.repository.ServiceVisitRepository;
+import co.edu.sena.tu_unidad.service.ServiceVisitService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class ServiceVisitServiceImpl implements ServiceVisitService {
+
+    @Autowired
+    private ServiceVisitRepository repo;
+
+    private ServiceVisitDto toDto(ServiceVisitEntity e) {
+        if (e == null) return null;
+        return ServiceVisitDto.builder()
+                .id(e.getId())
+                .serviceRequestId(e.getServiceRequestId())
+                .visitDatetime(e.getVisitDatetime())
+                .technicianId(e.getTechnicianId())
+                .visitNotes(e.getVisitNotes())
+                .meterReadingBefore(e.getMeterReadingBefore())
+                .meterReadingAfter(e.getMeterReadingAfter())
+                .solved(e.getSolved())
+                .partsUsed(null)
+                .build();
+    }
+
+    @Override
+    public ServiceVisitDto createServiceVisit(ServiceVisitDto dto) {
+        ServiceVisitEntity e = new ServiceVisitEntity();
+        e.setServiceRequestId(dto.getServiceRequestId());
+        e.setVisitDatetime(dto.getVisitDatetime() != null ? dto.getVisitDatetime() : OffsetDateTime.now());
+        e.setTechnicianId(dto.getTechnicianId());
+        e.setVisitNotes(dto.getVisitNotes());
+        e.setMeterReadingBefore(dto.getMeterReadingBefore());
+        e.setMeterReadingAfter(dto.getMeterReadingAfter());
+        e.setSolved(dto.getSolved() != null ? dto.getSolved() : false);
+        e.setCreatedAt(OffsetDateTime.now());
+        // partsUsed serialized to JSON if dto.partsUsed != null -> left as null for now
+        e = repo.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public List<ServiceVisitDto> getVisitsByRequest(Long requestId) {
+        return repo.findByServiceRequestId(requestId).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ServiceVisitDto> getVisitsByTechnician(Long technicianId) {
+        return repo.findByTechnicianId(technicianId).stream().map(this::toDto).collect(Collectors.toList());
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\TechnicianServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.TechnicianDto;
+import co.edu.sena.tu_unidad.entity.TechnicianEntity;
+import co.edu.sena.tu_unidad.repository.TechnicianRepository;
+import co.edu.sena.tu_unidad.repository.ServiceVisitRepository;
+import co.edu.sena.tu_unidad.service.TechnicianService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class TechnicianServiceImpl implements TechnicianService {
+
+    @Autowired
+    private TechnicianRepository repo;
+
+    @Autowired
+    private ServiceVisitRepository visitRepo;
+
+    private TechnicianDto toDto(TechnicianEntity e) {
+        if (e == null) return null;
+        return TechnicianDto.builder()
+                .id(e.getId())
+                .identification(e.getIdentification())
+                .fullName(e.getFullName())
+                .phone(e.getPhone())
+                .email(e.getEmail())
+                .active(e.getActive())
+                .build();
+    }
+
+    @Override
+    public List<TechnicianDto> getAllTechnicians() {
+        return repo.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public TechnicianDto getTechnicianById(Long id) {
+        return repo.findById(id).map(this::toDto).orElse(null);
+    }
+
+    @Override
+    public TechnicianDto createTechnician(TechnicianDto dto) {
+        TechnicianEntity e = new TechnicianEntity();
+        e.setIdentification(dto.getIdentification());
+        e.setFullName(dto.getFullName());
+        e.setPhone(dto.getPhone());
+        e.setEmail(dto.getEmail());
+        e.setActive(dto.getActive() != null ? dto.getActive() : true);
+        e = repo.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public TechnicianDto updateTechnician(Long id, TechnicianDto dto) {
+        TechnicianEntity e = repo.findById(id).orElse(null);
+        if (e == null) return null;
+        e.setFullName(dto.getFullName());
+        e.setPhone(dto.getPhone());
+        e.setEmail(dto.getEmail());
+        e.setActive(dto.getActive());
+        repo.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public Object getTechnicianPerformance(Long id, OffsetDateTime startDate, OffsetDateTime endDate) {
+        // Implementar lógica de rendimiento: ponderado por visitas, repetidos, tiempos, etc.
+        // Aquí retorno un objeto simple con conteos para que el frontend muestre.
+        long totalVisits = visitRepo.findByTechnicianId(id).stream()
+                .filter(v -> {
+                    if (v.getVisitDatetime() == null) return false;
+                    return !v.getVisitDatetime().isBefore(startDate) && !v.getVisitDatetime().isAfter(endDate);
+                })
+                .count();
+        return java.util.Map.of("technicianId", id, "totalVisits", totalVisits);
+    }
+
+    @Override
+    public Object getTechniciansComparison(OffsetDateTime startDate, OffsetDateTime endDate) {
+        // Retorna un mapa simple con counts por técnico (puedes enriquecer para gráficos)
+        List<TechnicianEntity> techs = repo.findAll();
+        java.util.Map<Long, Long> map = new java.util.HashMap<>();
+        for (TechnicianEntity t : techs) {
+            long count = visitRepo.findByTechnicianId(t.getId()).stream()
+                    .filter(v -> v.getVisitDatetime() != null && !v.getVisitDatetime().isBefore(startDate) && !v.getVisitDatetime().isAfter(endDate))
+                    .count();
+            map.put(t.getId(), count);
+        }
+        return map;
+    }
+
+    @Override
+    public void deleteTechnician(Long id) {
+        if (!repo.existsById(id)) {
+            throw new RuntimeException("Técnico no encontrado con id " + id);
+        }
+        repo.deleteById(id);
+    }
+}
+
+
+// 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\UserServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.UserDto;
+import co.edu.sena.tu_unidad.entity.UserEntity;
+import co.edu.sena.tu_unidad.repository.UserRepository;
+import co.edu.sena.tu_unidad.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.time.OffsetDateTime;
+
+@Service
+public class UserServiceImpl implements UserService {
+
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private UserDto toDto(UserEntity e) {
+        if (e == null) return null;
+        return UserDto.builder()
+                .id(e.getId())
+                .username(e.getUsername())
+                .email(e.getEmail())
+                .fullName(e.getFullName())
+                .role(e.getRole())
+                .phone(e.getPhone())
+                .build();
+    }
+
+    @Override
+    public UserDto getUserById(Long id) {
+        return userRepository.findById(id).map(this::toDto).orElse(null);
+    }
+
+    @Override
+    public UserDto getUserByEmail(String email) {
+        return userRepository.findByEmail(email).map(this::toDto).orElse(null);
+    }
+
+    @Override
+    public UserDto register(UserDto dto) {
+        UserEntity e = new UserEntity();
+        e.setUsername(dto.getUsername());
+        e.setEmail(dto.getEmail());
+        e.setFullName(dto.getFullName());
+        e.setRole(dto.getRole());
+        e.setPhone(dto.getPhone());
+        e.setPassword(passwordEncoder.encode("default123")); // default password, change later
+        e.setCreatedAt(OffsetDateTime.now());
+        e = userRepository.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public UserDto updateUser(Long id, UserDto dto) {
+        UserEntity e = userRepository.findById(id).orElse(null);
+        if (e == null) return null;
+        e.setFullName(dto.getFullName());
+        e.setEmail(dto.getEmail());
+        e.setPhone(dto.getPhone());
+        e.setRole(dto.getRole());
+        userRepository.save(e);
+        return toDto(e);
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
+
+    @Override
+    public List<UserDto> getAllUsers() {
+        return userRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean changePassword(Long id, String oldPassword, String newPassword) {
+        UserEntity e = userRepository.findById(id).orElse(null);
+        if (e == null) return false;
+        if (!passwordEncoder.matches(oldPassword, e.getPassword())) return false;
+        e.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(e);
+        return true;
+    }
+}
+
+
+// 
+

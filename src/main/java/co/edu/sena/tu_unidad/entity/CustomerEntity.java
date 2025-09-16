@@ -16,12 +16,22 @@ public class CustomerEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nit;
+    @Column(unique = true)
+    private String nit;   // puede ser null si es persona natural
+
+    @Column(nullable = false)
     private String name;
+
+    @Column(name = "contact_name")
     private String contactName;
+
     private String phone;
+
     private String email;
+
     private String address;
+
+    @Column(name = "created_at")
     private OffsetDateTime createdAt;
 }
 

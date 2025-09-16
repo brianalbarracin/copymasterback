@@ -6,6 +6,7 @@ import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 import co.edu.sena.tu_unidad.service.ServiceRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -112,6 +113,14 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     @Override
     public List<ServiceRequestDto> getServiceRequestsByMachine(Long machineId) {
         return repo.findByMachineId(machineId).stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Autowired
+    private ServiceRequestRepository repository;
+
+    @Override
+    public List<ServiceRequestEntity> getRequestsByCustomer(Long customerId) {
+        return repository.findByCustomerId(customerId);
     }
 }
 

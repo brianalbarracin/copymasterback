@@ -12,6 +12,7 @@ public interface TechnicianService {
     TechnicianDto updateTechnician(Long id, TechnicianDto dto);
     Object getTechnicianPerformance(Long id, OffsetDateTime startDate, OffsetDateTime endDate);
     Object getTechniciansComparison(OffsetDateTime startDate, OffsetDateTime endDate);
+    void deleteTechnician(Long id);
 }
 
 

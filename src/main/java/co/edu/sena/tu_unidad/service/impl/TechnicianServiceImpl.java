@@ -93,6 +93,14 @@ public class TechnicianServiceImpl implements TechnicianService {
         }
         return map;
     }
+
+    @Override
+    public void deleteTechnician(Long id) {
+        if (!repo.existsById(id)) {
+            throw new RuntimeException("Técnico no encontrado con id " + id);
+        }
+        repo.deleteById(id);
+    }
 }
 
 
