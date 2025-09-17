@@ -6,6 +6,7 @@ import co.edu.sena.tu_unidad.repository.CustomerRepository;
 import co.edu.sena.tu_unidad.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.entity.LocationEntity;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -42,6 +43,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public CustomerDto createCustomer(CustomerDto dto) {
+
         CustomerEntity e = new CustomerEntity();
         e.setNit(dto.getNit());
         e.setName(dto.getName());
@@ -50,7 +52,16 @@ public class CustomerServiceImpl implements CustomerService {
         e.setEmail(dto.getEmail());
         e.setAddress(dto.getAddress());
         e.setCreatedAt(OffsetDateTime.now());
-        e = repo.save(e);
+        // Crear la Location automáticamente
+        LocationEntity location = LocationEntity.builder()
+                .name(dto.getName()) // mismo nombre del cliente
+                .address(dto.getAddress())
+                .description("Ubicación principal de " + dto.getName())
+                .build();
+
+        e.setLocation(location);
+
+        CustomerEntity saved = repo.save(e);
         return toDto(e);
     }
 

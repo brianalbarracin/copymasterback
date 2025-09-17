@@ -2,6 +2,8 @@ package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.JoinColumn;
 
 import java.time.OffsetDateTime;
 
@@ -33,6 +35,10 @@ public class CustomerEntity {
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "location_id", referencedColumnName = "id")
+    private LocationEntity location;
 }
 
 

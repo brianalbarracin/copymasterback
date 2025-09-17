@@ -586,6 +586,17 @@ public class TechnicianController {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\domain\enums\MachineStatus.java =====
+package co.edu.sena.tu_unidad.domain.enums;
+
+public enum MachineStatus {
+    BODEGA,
+    INSTALADA,
+    MANTENIMIENTO,
+    RETIRADA
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\CustomerDto.java =====
 package co.edu.sena.tu_unidad.dto;
 
@@ -653,6 +664,7 @@ public class LoginResponseDto {
 package co.edu.sena.tu_unidad.dto;
 
 import lombok.AllArgsConstructor;
+import co.edu.sena.tu_unidad.domain.enums.MachineStatus;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -669,7 +681,7 @@ public class MachineDto {
     private String brand;
     private Integer year;
     private Long currentLocationId;
-    private String status;
+    private MachineStatus status;
     private Long currentCustomerId;
     private Long initialReading;   // lectura inicial
     private String readingNotes;
@@ -891,6 +903,7 @@ public class LocationEntity {
 package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
+import co.edu.sena.tu_unidad.domain.enums.MachineStatus;
 import lombok.*;
 
 import java.time.OffsetDateTime;
@@ -919,7 +932,9 @@ public class MachineEntity {
     @Column(name = "current_location_id")
     private Long currentLocationId;
 
-    private String status;
+    @Enumerated(EnumType.STRING) // 🔹 Aquí hacemos el mapping correcto
+    @Column(columnDefinition = "status", nullable = false)
+    private MachineStatus status;
 
     @Column(name = "current_customer_id")
     private Long currentCustomerId;
@@ -1640,7 +1655,9 @@ public class MachineServiceImpl implements MachineService {
         e.setBrand(dto.getBrand());
         e.setYear(dto.getYear());
         e.setCurrentLocationId(dto.getCurrentLocationId());
-        e.setStatus(dto.getStatus() != null ? dto.getStatus() : "bodega");
+        if (dto.getStatus() != null) {
+            e.setStatus(dto.getStatus());  // ✅ solo asigna si viene en el DTO
+        }
         e.setCurrentCustomerId(dto.getCurrentCustomerId());
         e.setPurchaseDate(null);
         e.setCreatedAt(OffsetDateTime.now());
@@ -1669,7 +1686,9 @@ public class MachineServiceImpl implements MachineService {
         e.setBrand(dto.getBrand());
         e.setCompanyNumber(dto.getCompanyNumber());
         e.setCurrentLocationId(dto.getCurrentLocationId());
-        e.setStatus(dto.getStatus());
+        if (dto.getStatus() != null) {
+            e.setStatus(dto.getStatus());  // ✅ ahora enum
+        }
         e.setNotes(dto.getNotes());
         machineRepository.save(e);
         return toDto(e);
