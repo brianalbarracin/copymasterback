@@ -1,6 +1,7 @@
 package co.edu.sena.tu_unidad.dto;
 
 import lombok.AllArgsConstructor;
+import co.edu.sena.tu_unidad.domain.enums.MachineStatus;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,7 +18,7 @@ public class MachineDto {
     private String brand;
     private Integer year;
     private Long currentLocationId;
-    private String status;
+    private MachineStatus status;
     private Long currentCustomerId;
     private Long initialReading;   // lectura inicial
     private String readingNotes;

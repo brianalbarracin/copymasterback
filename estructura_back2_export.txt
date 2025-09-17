@@ -671,7 +671,10 @@ public class MachineDto {
     private Long currentLocationId;
     private String status;
     private Long currentCustomerId;
+    private Long initialReading;   // lectura inicial
+    private String readingNotes;
     private String notes;
+
 }
 
 
@@ -1645,12 +1648,15 @@ public class MachineServiceImpl implements MachineService {
         e = machineRepository.save(e);
 
         // crear lectura inicial si viene en dto.currentCustomerId? (ejemplo)
-        MeterReadingEntity mr = MeterReadingEntity.builder()
-                .machineId(e.getId())
-                .reading(0L)
-                .readingDate(OffsetDateTime.now())
-                .build();
-        meterReadingRepository.save(mr);
+        if (e.getId() != null && dto.getInitialReading() != null) {
+            MeterReadingEntity mr = MeterReadingEntity.builder()
+                    .machineId(e.getId())
+                    .reading(dto.getInitialReading())
+                    .readingDate(OffsetDateTime.now())
+                    .notes(dto.getReadingNotes() != null ? dto.getReadingNotes() : "Lectura inicial")
+                    .build();
+            meterReadingRepository.save(mr);
+        }
 
         return toDto(e);
     }

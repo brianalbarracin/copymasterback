@@ -1,6 +1,7 @@
 package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
+import co.edu.sena.tu_unidad.domain.enums.MachineStatus;
 import lombok.*;
 
 import java.time.OffsetDateTime;
@@ -29,7 +30,9 @@ public class MachineEntity {
     @Column(name = "current_location_id")
     private Long currentLocationId;
 
-    private String status;
+    @Enumerated(EnumType.STRING) // 🔹 Aquí hacemos el mapping correcto
+    @Column(columnDefinition = "status", nullable = false)
+    private MachineStatus status;
 
     @Column(name = "current_customer_id")
     private Long currentCustomerId;

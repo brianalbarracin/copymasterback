@@ -61,7 +61,9 @@ public class MachineServiceImpl implements MachineService {
         e.setBrand(dto.getBrand());
         e.setYear(dto.getYear());
         e.setCurrentLocationId(dto.getCurrentLocationId());
-        e.setStatus(dto.getStatus() != null ? dto.getStatus() : "bodega");
+        if (dto.getStatus() != null) {
+            e.setStatus(dto.getStatus());  // ✅ solo asigna si viene en el DTO
+        }
         e.setCurrentCustomerId(dto.getCurrentCustomerId());
         e.setPurchaseDate(null);
         e.setCreatedAt(OffsetDateTime.now());
@@ -90,7 +92,9 @@ public class MachineServiceImpl implements MachineService {
         e.setBrand(dto.getBrand());
         e.setCompanyNumber(dto.getCompanyNumber());
         e.setCurrentLocationId(dto.getCurrentLocationId());
-        e.setStatus(dto.getStatus());
+        if (dto.getStatus() != null) {
+            e.setStatus(dto.getStatus());  // ✅ ahora enum
+        }
         e.setNotes(dto.getNotes());
         machineRepository.save(e);
         return toDto(e);
