@@ -19,7 +19,10 @@ public class MachineDto {
     private Long currentLocationId;
     private String status;
     private Long currentCustomerId;
+    private Long initialReading;   // lectura inicial
+    private String readingNotes;
     private String notes;
+
 }
 
 

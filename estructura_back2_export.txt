@@ -71,6 +71,7 @@ public class SecurityConfig {
                         "/mach/service-visits/**",
                         "/machine-movements/**",
                         "/meter-readings/**",
+                        "/machines/**",
                         "/customers/**").permitAll()
                 .anyRequest().authenticated()
             )
@@ -1807,7 +1808,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Autowired
     private ServiceRequestRepository repository;
-    
+
     @Override
     public List<ServiceRequestEntity> getRequestsByCustomer(Long customerId) {
         return repository.findByCustomerId(customerId);
