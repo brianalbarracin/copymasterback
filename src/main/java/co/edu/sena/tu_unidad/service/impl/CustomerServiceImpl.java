@@ -7,6 +7,7 @@ import co.edu.sena.tu_unidad.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import co.edu.sena.tu_unidad.entity.LocationEntity;
+import co.edu.sena.tu_unidad.dto.LocationDto;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -28,6 +29,16 @@ public class CustomerServiceImpl implements CustomerService {
                 .phone(e.getPhone())
                 .email(e.getEmail())
                 .address(e.getAddress())
+                .location(toLocationDto(e.getLocation()))
+                .build();
+    }
+    private LocationDto toLocationDto(LocationEntity l) {
+        if (l == null) return null;
+        return LocationDto.builder()
+                .id(l.getId())
+                .name(l.getName())
+                .address(l.getAddress())
+                .description(l.getDescription())
                 .build();
     }
 
@@ -62,7 +73,7 @@ public class CustomerServiceImpl implements CustomerService {
         e.setLocation(location);
 
         CustomerEntity saved = repo.save(e);
-        return toDto(e);
+        return toDto(saved);
     }
 
     @Override

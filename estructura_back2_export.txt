@@ -71,6 +71,7 @@ public class SecurityConfig {
                         "/mach/service-visits/**",
                         "/machine-movements/**",
                         "/meter-readings/**",
+                        "/locations/**",
                         "/machines/**",
                         "/customers/**").permitAll()
                 .anyRequest().authenticated()
@@ -238,6 +239,34 @@ public class CustomerController {
     public ResponseEntity<Map<String, Object>> getRequests(@PathVariable Long id) {
         List<ServiceRequestEntity> requests = requestService.getRequestsByCustomer(id);
         return buildResponse(200, "Solicitudes del cliente obtenidas", requests);
+    }
+}
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\LocationController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.entity.LocationEntity;
+import co.edu.sena.tu_unidad.repository.LocationRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/locations")
+@RequiredArgsConstructor
+public class LocationController {
+    private final LocationRepository repo;
+
+    @PostMapping
+    public LocationEntity create(@RequestBody LocationEntity location) {
+        return repo.save(location);
+    }
+
+    @GetMapping
+    public List<LocationEntity> getAll() {
+        return repo.findAll();
     }
 }
 
@@ -614,6 +643,28 @@ public class CustomerDto {
     private String phone;
     private String email;
     private String address;
+    private LocationDto location;
+
+}
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\LocationDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class LocationDto {
+    private Long id;
+    private String name;
+    private String address;
+    private String description;
 }
 
 
@@ -835,6 +886,8 @@ package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.JoinColumn;
 
 import java.time.OffsetDateTime;
 
@@ -866,6 +919,10 @@ public class CustomerEntity {
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
+
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "location_id", referencedColumnName = "id")
+    private LocationEntity location;
 }
 
 
@@ -1517,6 +1574,8 @@ import co.edu.sena.tu_unidad.repository.CustomerRepository;
 import co.edu.sena.tu_unidad.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.entity.LocationEntity;
+import co.edu.sena.tu_unidad.dto.LocationDto;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -1538,6 +1597,16 @@ public class CustomerServiceImpl implements CustomerService {
                 .phone(e.getPhone())
                 .email(e.getEmail())
                 .address(e.getAddress())
+                .location(toLocationDto(e.getLocation()))
+                .build();
+    }
+    private LocationDto toLocationDto(LocationEntity l) {
+        if (l == null) return null;
+        return LocationDto.builder()
+                .id(l.getId())
+                .name(l.getName())
+                .address(l.getAddress())
+                .description(l.getDescription())
                 .build();
     }
 
@@ -1553,6 +1622,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public CustomerDto createCustomer(CustomerDto dto) {
+
         CustomerEntity e = new CustomerEntity();
         e.setNit(dto.getNit());
         e.setName(dto.getName());
@@ -1561,8 +1631,17 @@ public class CustomerServiceImpl implements CustomerService {
         e.setEmail(dto.getEmail());
         e.setAddress(dto.getAddress());
         e.setCreatedAt(OffsetDateTime.now());
-        e = repo.save(e);
-        return toDto(e);
+        // Crear la Location automáticamente
+        LocationEntity location = LocationEntity.builder()
+                .name(dto.getName()) // mismo nombre del cliente
+                .address(dto.getAddress())
+                .description("Ubicación principal de " + dto.getName())
+                .build();
+
+        e.setLocation(location);
+
+        CustomerEntity saved = repo.save(e);
+        return toDto(saved);
     }
 
     @Override
