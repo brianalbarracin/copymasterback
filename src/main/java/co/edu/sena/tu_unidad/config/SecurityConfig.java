@@ -43,6 +43,7 @@ public class SecurityConfig {
                         "/mach/service-visits/**",
                         "/machine-movements/**",
                         "/meter-readings/**",
+                        "/machines/**",
                         "/customers/**").permitAll()
                 .anyRequest().authenticated()
             )
