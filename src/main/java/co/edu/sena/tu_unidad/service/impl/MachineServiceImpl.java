@@ -7,6 +7,9 @@ import co.edu.sena.tu_unidad.repository.LocationRepository;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
 import co.edu.sena.tu_unidad.service.MachineService;
+import co.edu.sena.tu_unidad.repository.MachineMovementRepository;
+import co.edu.sena.tu_unidad.entity.MachineMovementEntity;
+import co.edu.sena.tu_unidad.domain.enums.MovementType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +25,9 @@ public class MachineServiceImpl implements MachineService {
 
     @Autowired
     private LocationRepository locationRepository;
+
+    @Autowired
+    private MachineMovementRepository movementRepo;
 
     @Autowired
     private MeterReadingRepository meterReadingRepository;
@@ -62,15 +68,33 @@ public class MachineServiceImpl implements MachineService {
         e.setYear(dto.getYear());
         e.setCurrentLocationId(dto.getCurrentLocationId());
         if (dto.getStatus() != null) {
-            e.setStatus(dto.getStatus());  // ✅ solo asigna si viene en el DTO
+            e.setStatus(dto.getStatus());
         }
         e.setCurrentCustomerId(dto.getCurrentCustomerId());
         e.setPurchaseDate(null);
         e.setCreatedAt(OffsetDateTime.now());
         e.setNotes(dto.getNotes());
+
+        // Guardar máquina
         e = machineRepository.save(e);
 
-        // crear lectura inicial si viene en dto.currentCustomerId? (ejemplo)
+        // ✅ Crear primer movimiento con los valores correctos
+        if (e.getId() != null) {
+            MachineMovementEntity move = MachineMovementEntity.builder()
+                    .machineId(e.getId())
+                    .fromLocationId(null) // primera vez
+                    .toLocationId(e.getCurrentLocationId())
+                    .movementType(MovementType.INGRESO) // tu enum
+                    .reason("Ubicación inicial")
+                    .createdByUserId(1L) // opcional, si tienes usuario
+                    .effectiveDate(OffsetDateTime.now())
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+
+            movementRepo.save(move);
+        }
+
+        // ✅ Si viene lectura inicial, la guardamos
         if (e.getId() != null && dto.getInitialReading() != null) {
             MeterReadingEntity mr = MeterReadingEntity.builder()
                     .machineId(e.getId())

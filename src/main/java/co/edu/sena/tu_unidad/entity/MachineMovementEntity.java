@@ -1,6 +1,7 @@
 package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
+import co.edu.sena.tu_unidad.domain.enums.MovementType;
 import lombok.*;
 
 import java.time.OffsetDateTime;
@@ -19,7 +20,8 @@ public class MachineMovementEntity {
     private Long machineId;
     private Long fromLocationId;
     private Long toLocationId;
-    private String movementType;
+    @Enumerated(EnumType.STRING) // ✅ Guardar enum como texto en la BD
+    private MovementType movementType;
     private OffsetDateTime effectiveDate;
     private String reason;
     private Long relatedContractId;
