@@ -9,5 +9,5 @@ public interface CustomerService {
     CustomerDto createCustomer(CustomerDto dto);
     CustomerDto updateCustomer(Long id, CustomerDto dto);
     boolean deleteCustomer(Long id);
-    CustomerDto getCustomerByLocationId(Long locationId);
+
 }

@@ -100,10 +100,6 @@ public class CustomerServiceImpl implements CustomerService {
         return true;
     }
 
-    public CustomerDto getCustomerByLocationId(Long locationId) {
-        return repo.findByLocationId(locationId).map(this::toDto).orElse(null);
-    }
-
 
 
 }

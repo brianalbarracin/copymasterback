@@ -7,8 +7,7 @@ import java.util.Optional;
 @Repository
 public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> {
 
-    Optional<CustomerEntity> findByLocationId(Long locationId);
-}
+   }
 
 
 // 
