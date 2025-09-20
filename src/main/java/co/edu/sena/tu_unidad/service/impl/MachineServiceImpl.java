@@ -116,6 +116,8 @@ public class MachineServiceImpl implements MachineService {
         e.setBrand(dto.getBrand());
         e.setCompanyNumber(dto.getCompanyNumber());
         e.setCurrentLocationId(dto.getCurrentLocationId());
+
+        e.setCurrentCustomerId(dto.getCurrentCustomerId());
         if (dto.getStatus() != null) {
             e.setStatus(dto.getStatus());  // ✅ ahora enum
         }
