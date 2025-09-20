@@ -6,6 +6,7 @@ import co.edu.sena.tu_unidad.repository.MachineRepository;
 import co.edu.sena.tu_unidad.repository.LocationRepository;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import co.edu.sena.tu_unidad.entity.LocationEntity;
 import co.edu.sena.tu_unidad.service.MachineService;
 import co.edu.sena.tu_unidad.repository.MachineMovementRepository;
 import co.edu.sena.tu_unidad.entity.MachineMovementEntity;
@@ -58,6 +59,8 @@ public class MachineServiceImpl implements MachineService {
         return machineRepository.findById(id).map(this::toDto).orElse(null);
     }
 
+
+
     @Override
     public MachineDto createMachine(MachineDto dto) {
         MachineEntity e = new MachineEntity();
@@ -67,10 +70,18 @@ public class MachineServiceImpl implements MachineService {
         e.setBrand(dto.getBrand());
         e.setYear(dto.getYear());
         e.setCurrentLocationId(dto.getCurrentLocationId());
+
+        // 🔹 Calcular currentCustomerId a partir de locationId
+        if (dto.getCurrentLocationId() != null) {
+            LocationEntity loc = locationRepository.findById(dto.getCurrentLocationId()).orElse(null);
+            if (loc != null && loc.getCustomer() != null) {
+                e.setCurrentCustomerId(loc.getCustomer().getId());
+            }
+        }
+
         if (dto.getStatus() != null) {
             e.setStatus(dto.getStatus());
         }
-        e.setCurrentCustomerId(dto.getCurrentCustomerId());
         e.setPurchaseDate(null);
         e.setCreatedAt(OffsetDateTime.now());
         e.setNotes(dto.getNotes());
@@ -84,9 +95,9 @@ public class MachineServiceImpl implements MachineService {
                     .machineId(e.getId())
                     .fromLocationId(null) // primera vez
                     .toLocationId(e.getCurrentLocationId())
-                    .movementType(MovementType.INGRESO) // tu enum
+                    .movementType(MovementType.INGRESO)
                     .reason("Ubicación inicial")
-                    .createdByUserId(1L) // opcional, si tienes usuario
+                    .createdByUserId(1L) // opcional
                     .effectiveDate(OffsetDateTime.now())
                     .createdAt(OffsetDateTime.now())
                     .build();
@@ -112,17 +123,38 @@ public class MachineServiceImpl implements MachineService {
     public MachineDto updateMachine(Long id, MachineDto dto) {
         MachineEntity e = machineRepository.findById(id).orElse(null);
         if (e == null) return null;
+
         e.setModel(dto.getModel());
         e.setBrand(dto.getBrand());
         e.setCompanyNumber(dto.getCompanyNumber());
         e.setCurrentLocationId(dto.getCurrentLocationId());
+
+        // 🔹 Calcular currentCustomerId a partir de locationId también en update
+        if (dto.getCurrentLocationId() != null) {
+            locationRepository.findById(dto.getCurrentLocationId())
+                    .ifPresent(loc -> {
+                        if (loc.getCustomer() != null) {
+                            e.setCurrentCustomerId(loc.getCustomer().getId());
+                        }
+                    });
+        }
+
         if (dto.getStatus() != null) {
-            e.setStatus(dto.getStatus());  // ✅ ahora enum
+            e.setStatus(dto.getStatus());
         }
         e.setNotes(dto.getNotes());
+
         machineRepository.save(e);
         return toDto(e);
     }
+
+
+
+
+
+
+
+
 
     @Override
     public void deleteMachine(Long id) {

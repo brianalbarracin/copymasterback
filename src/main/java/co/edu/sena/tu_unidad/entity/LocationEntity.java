@@ -20,6 +20,9 @@ public class LocationEntity {
     private String name;
     private String description;
     private String address;
+
+    @OneToOne(mappedBy = "location")
+    private CustomerEntity customer;
 }
 
 

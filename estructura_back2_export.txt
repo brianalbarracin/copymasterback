@@ -353,6 +353,64 @@ public class MachineController {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\MachineMovementController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.entity.MachineMovementEntity;
+import co.edu.sena.tu_unidad.entity.MachineEntity;
+import co.edu.sena.tu_unidad.repository.MachineRepository;
+import co.edu.sena.tu_unidad.domain.enums.MovementType;
+import co.edu.sena.tu_unidad.repository.MachineMovementRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.OffsetDateTime;
+
+@RestController
+@RequestMapping("/machine-movements")
+@RequiredArgsConstructor
+
+public class MachineMovementController {
+
+    private final MachineMovementRepository repo;
+    private final MachineRepository machineRepo;
+
+    @GetMapping
+    public ServerResponseDto listByMachine(@RequestParam Long machineId) {
+        return ServerResponseDto.builder()
+                .status(200)
+                .message("Movimientos obtenidos")
+                .data(repo.findByMachineIdOrderByEffectiveDateDesc(machineId))
+                .build();
+    }
+
+    @PostMapping
+    public ServerResponseDto create(@RequestBody MachineMovementEntity move) {
+        move.setEffectiveDate(OffsetDateTime.now());
+        if (move.getMovementType() == null) {
+            move.setMovementType(MovementType.TRASLADO); // o usa tu enum si corresponde
+        }
+
+        // Guardar movimiento
+        MachineMovementEntity saved = repo.save(move);
+
+        // Actualizar ubicación actual en la máquina
+        MachineEntity machine = machineRepo.findById(move.getMachineId()).orElse(null);
+        if (machine != null && move.getToLocationId() != null) {
+            machine.setCurrentLocationId(move.getToLocationId());
+            machineRepo.save(machine);
+        }
+
+        return ServerResponseDto.builder()
+                .status(201)
+                .message("Movimiento creado")
+                .data(saved)
+                .build();
+    }
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\MeterReadingController.java =====
 package co.edu.sena.tu_unidad.controller;
 
@@ -623,6 +681,20 @@ public enum MachineStatus {
     INSTALADA,
     MANTENIMIENTO,
     RETIRADA
+}
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\domain\enums\MovementType.java =====
+package co.edu.sena.tu_unidad.domain.enums;
+
+public enum MovementType {
+    INGRESO,
+    SALIDA,
+    TRASLADO,
+    VENTA,
+    CHATARRIZACION,
+    RETORNO_ALQUILER,
+    OTRO
 }
 
 
@@ -1008,6 +1080,7 @@ public class MachineEntity {
 package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
+import co.edu.sena.tu_unidad.domain.enums.MovementType;
 import lombok.*;
 
 import java.time.OffsetDateTime;
@@ -1026,7 +1099,8 @@ public class MachineMovementEntity {
     private Long machineId;
     private Long fromLocationId;
     private Long toLocationId;
-    private String movementType;
+    @Enumerated(EnumType.STRING) // ✅ Guardar enum como texto en la BD
+    private MovementType movementType;
     private OffsetDateTime effectiveDate;
     private String reason;
     private Long relatedContractId;
@@ -1282,6 +1356,19 @@ public interface LocationRepository extends JpaRepository<LocationEntity, Long> 
 
 
 // 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\MachineMovementRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.MachineMovementEntity;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface MachineMovementRepository extends JpaRepository<MachineMovementEntity, Long> {
+    List<MachineMovementEntity> findByMachineIdOrderByEffectiveDateDesc(Long machineId);
+}
+
 
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\MachineRepository.java =====
 package co.edu.sena.tu_unidad.repository;
@@ -1680,6 +1767,9 @@ import co.edu.sena.tu_unidad.repository.LocationRepository;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
 import co.edu.sena.tu_unidad.service.MachineService;
+import co.edu.sena.tu_unidad.repository.MachineMovementRepository;
+import co.edu.sena.tu_unidad.entity.MachineMovementEntity;
+import co.edu.sena.tu_unidad.domain.enums.MovementType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -1695,6 +1785,9 @@ public class MachineServiceImpl implements MachineService {
 
     @Autowired
     private LocationRepository locationRepository;
+
+    @Autowired
+    private MachineMovementRepository movementRepo;
 
     @Autowired
     private MeterReadingRepository meterReadingRepository;
@@ -1735,15 +1828,33 @@ public class MachineServiceImpl implements MachineService {
         e.setYear(dto.getYear());
         e.setCurrentLocationId(dto.getCurrentLocationId());
         if (dto.getStatus() != null) {
-            e.setStatus(dto.getStatus());  // ✅ solo asigna si viene en el DTO
+            e.setStatus(dto.getStatus());
         }
         e.setCurrentCustomerId(dto.getCurrentCustomerId());
         e.setPurchaseDate(null);
         e.setCreatedAt(OffsetDateTime.now());
         e.setNotes(dto.getNotes());
+
+        // Guardar máquina
         e = machineRepository.save(e);
 
-        // crear lectura inicial si viene en dto.currentCustomerId? (ejemplo)
+        // ✅ Crear primer movimiento con los valores correctos
+        if (e.getId() != null) {
+            MachineMovementEntity move = MachineMovementEntity.builder()
+                    .machineId(e.getId())
+                    .fromLocationId(null) // primera vez
+                    .toLocationId(e.getCurrentLocationId())
+                    .movementType(MovementType.INGRESO) // tu enum
+                    .reason("Ubicación inicial")
+                    .createdByUserId(1L) // opcional, si tienes usuario
+                    .effectiveDate(OffsetDateTime.now())
+                    .createdAt(OffsetDateTime.now())
+                    .build();
+
+            movementRepo.save(move);
+        }
+
+        // ✅ Si viene lectura inicial, la guardamos
         if (e.getId() != null && dto.getInitialReading() != null) {
             MeterReadingEntity mr = MeterReadingEntity.builder()
                     .machineId(e.getId())
