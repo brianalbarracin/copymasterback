@@ -2,10 +2,13 @@ package co.edu.sena.tu_unidad.service.impl;
 
 import co.edu.sena.tu_unidad.dto.MachineDto;
 import co.edu.sena.tu_unidad.entity.MachineEntity;
+import co.edu.sena.tu_unidad.service.CustomerService;
+import co.edu.sena.tu_unidad.service.impl.CustomerServiceImpl;
 import co.edu.sena.tu_unidad.repository.MachineRepository;
 import co.edu.sena.tu_unidad.repository.LocationRepository;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import co.edu.sena.tu_unidad.dto.CustomerDto;
 import co.edu.sena.tu_unidad.service.MachineService;
 import co.edu.sena.tu_unidad.repository.MachineMovementRepository;
 import co.edu.sena.tu_unidad.entity.MachineMovementEntity;
@@ -108,18 +111,32 @@ public class MachineServiceImpl implements MachineService {
         return toDto(e);
     }
 
+    @Autowired
+    private CustomerService customerService;
+
     @Override
     public MachineDto updateMachine(Long id, MachineDto dto) {
         MachineEntity e = machineRepository.findById(id).orElse(null);
         if (e == null) return null;
+
+        // Si cambia la ubicación, buscar el cliente asociado
+        if (dto.getCurrentLocationId() != null &&
+                !dto.getCurrentLocationId().equals(e.getCurrentLocationId())) {
+
+            CustomerDto customer = customerService.getCustomerByLocationId(dto.getCurrentLocationId());
+            e.setCurrentCustomerId(customer != null ? customer.getId() : null);
+        }
+
         e.setModel(dto.getModel());
         e.setBrand(dto.getBrand());
         e.setCompanyNumber(dto.getCompanyNumber());
         e.setCurrentLocationId(dto.getCurrentLocationId());
+
         if (dto.getStatus() != null) {
-            e.setStatus(dto.getStatus());  // ✅ ahora enum
+            e.setStatus(dto.getStatus());
         }
         e.setNotes(dto.getNotes());
+
         machineRepository.save(e);
         return toDto(e);
     }

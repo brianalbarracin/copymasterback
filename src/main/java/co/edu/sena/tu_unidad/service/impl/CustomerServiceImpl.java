@@ -99,4 +99,11 @@ public class CustomerServiceImpl implements CustomerService {
         repository.deleteById(id);
         return true;
     }
+
+    public CustomerDto getCustomerByLocationId(Long locationId) {
+        return repo.findByLocationId(locationId).map(this::toDto).orElse(null);
+    }
+
+
+
 }

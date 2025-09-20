@@ -81,4 +81,17 @@ public class CustomerController {
         List<ServiceRequestEntity> requests = requestService.getRequestsByCustomer(id);
         return buildResponse(200, "Solicitudes del cliente obtenidas", requests);
     }
+
+
+    @GetMapping("/by-location/{locationId}")
+    public ResponseEntity<Map<String, Object>> getByLocation(@PathVariable Long locationId) {
+        CustomerDto c = customerService.getCustomerByLocationId(locationId);
+        if (c == null) {
+            return buildResponse(404, "No hay cliente asociado a esta ubicación", null);
+        }
+        return buildResponse(200, "Cliente obtenido", c);
+    }
+
+
+
 }
