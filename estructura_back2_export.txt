@@ -1334,10 +1334,11 @@ package co.edu.sena.tu_unidad.repository;
 import co.edu.sena.tu_unidad.entity.CustomerEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-
+import java.util.Optional;
 @Repository
 public interface CustomerRepository extends JpaRepository<CustomerEntity, Long> {
-}
+
+   }
 
 
 // 
@@ -1507,6 +1508,7 @@ public interface CustomerService {
     CustomerDto createCustomer(CustomerDto dto);
     CustomerDto updateCustomer(Long id, CustomerDto dto);
     boolean deleteCustomer(Long id);
+
 }
 
 
@@ -1754,6 +1756,9 @@ public class CustomerServiceImpl implements CustomerService {
         repository.deleteById(id);
         return true;
     }
+
+
+
 }
 
 
@@ -1876,6 +1881,8 @@ public class MachineServiceImpl implements MachineService {
         e.setBrand(dto.getBrand());
         e.setCompanyNumber(dto.getCompanyNumber());
         e.setCurrentLocationId(dto.getCurrentLocationId());
+
+        e.setCurrentCustomerId(dto.getCurrentCustomerId());
         if (dto.getStatus() != null) {
             e.setStatus(dto.getStatus());  // ✅ ahora enum
         }
