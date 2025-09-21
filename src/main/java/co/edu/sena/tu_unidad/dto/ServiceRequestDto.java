@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import co.edu.sena.tu_unidad.domain.enums.CommChannel;
+import co.edu.sena.tu_unidad.domain.enums.ServiceType;
 
 import java.time.OffsetDateTime;
 
@@ -20,8 +22,8 @@ public class ServiceRequestDto {
     private String companyNumber;
     private Long createdByUserId;
     private OffsetDateTime reportedAt;
-    private String reportedChannel;
-    private String serviceType;
+    private CommChannel reportedChannel;
+    private ServiceType serviceType;
     private String description;
     private String rootCause;
     private String status;
