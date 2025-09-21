@@ -122,6 +122,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     public List<ServiceRequestEntity> getRequestsByCustomer(Long customerId) {
         return repository.findByCustomerId(customerId);
     }
+
 }
 
 

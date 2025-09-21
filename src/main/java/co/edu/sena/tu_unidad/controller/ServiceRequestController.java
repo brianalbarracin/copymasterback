@@ -39,6 +39,24 @@ public class ServiceRequestController {
                 .build();
     }
 
+
+    @GetMapping("/{id}")
+    public ServerResponseDto getById(@PathVariable Long id) {
+        ServiceRequestDto request = service.getServiceRequestById(id);
+        if (request == null) {
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.NOT_FOUND.value())
+                    .message("Solicitud no encontrada")
+                    .data(null)
+                    .build();
+        }
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Solicitud obtenida")
+                .data(request)
+                .build();
+    }
+
     @GetMapping("/customer/{customerId}")
     public ServerResponseDto byCustomer(@PathVariable Long customerId) {
         return ServerResponseDto.builder()
