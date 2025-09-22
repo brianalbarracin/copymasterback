@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "meter_readings")
@@ -22,6 +23,7 @@ public class MeterReadingEntity {
     private Long technicianId;
     private String notes;
     @OneToOne(mappedBy = "meterReading")
+    @Transient // ✅ Evitar serialización circular
     private ServiceVisitEntity serviceVisit;
 }
 

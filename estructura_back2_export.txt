@@ -74,6 +74,7 @@ public class SecurityConfig {
                         "/locations/**",
                         "/service-requests/**",
                         "/machines/**",
+                        "/visits/**",
                         "/customers/**").permitAll()
                 .anyRequest().authenticated()
             )
@@ -968,6 +969,9 @@ public class ServiceVisitDto {
     private Long meterReadingBefore;
     private Long meterReadingAfter;
     private Boolean solved;
+    private Boolean takeMeterReading;
+    private Long reading;        // valor de la lectura
+    private String readingNotes;
 }
 
 
@@ -1328,8 +1332,11 @@ package co.edu.sena.tu_unidad.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.Map;
 
 import java.time.OffsetDateTime;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "service_visits")
@@ -1347,8 +1354,10 @@ public class ServiceVisitEntity {
     private Long technicianId;
     private String visitNotes;
 
+
+    @JdbcTypeCode(SqlTypes.JSON)  // 👈 así Hibernate sabe que es jsonb
     @Column(columnDefinition = "jsonb")
-    private String partsUsed; // store JSON string
+    private Map<String, Object> partsUsed; // store JSON string
 
     private Long meterReadingBefore;
     private Long meterReadingAfter;
@@ -2169,6 +2178,8 @@ import co.edu.sena.tu_unidad.dto.ServiceVisitDto;
 import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
 import co.edu.sena.tu_unidad.repository.ServiceVisitRepository;
 import co.edu.sena.tu_unidad.service.ServiceVisitService;
+import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -2182,6 +2193,10 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
     @Autowired
     private ServiceVisitRepository repo;
 
+
+    @Autowired
+    private MeterReadingRepository meterReadingRepository;
+
     @Override
     public ServiceVisitDto updateServiceVisit(Long id, ServiceVisitDto dto) {
         return repo.findById(id)
@@ -2189,18 +2204,36 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                     existing.setTechnicianId(dto.getTechnicianId());
                     existing.setVisitNotes(dto.getVisitNotes());
                     existing.setSolved(dto.getSolved() != null ? dto.getSolved() : false);
-                    existing.setMeterReadingBefore(dto.getMeterReadingBefore());
-                    existing.setMeterReadingAfter(dto.getMeterReadingAfter());
-                    existing.setUpdatedAt(OffsetDateTime.now());
 
-                    // ⚡ Si luego migras a tabla meter_readings:
-                    // aquí deberías crear/actualizar el MeterReadingEntity y enlazarlo
+                    // Manejo de medición
+                    if (Boolean.TRUE.equals(dto.getTakeMeterReading()) && dto.getReading() != null) {
+                        MeterReadingEntity reading = new MeterReadingEntity();
+                        reading.setReading(dto.getReading());
+                        reading.setReadingDate(OffsetDateTime.now());
+                        reading.setTechnicianId(dto.getTechnicianId());
+                        reading.setNotes(dto.getReadingNotes());
+
+                        // si tu ServiceVisit tiene referencia a machineId, puedes usarla aquí
+                        reading.setMachineId(existing.getServiceRequestId()); // ⚠️ ajustar según tu modelo
+
+                        meterReadingRepository.save(reading);
+                        existing.setMeterReading(reading);
+                    }
+
+                    if (dto.getPartsUsed() != null) {
+                        existing.setPartsUsed(dto.getPartsUsed());
+                    }
 
                     ServiceVisitEntity saved = repo.save(existing);
                     return toDto(saved);
                 })
                 .orElseThrow(() -> new RuntimeException("Visita no encontrada con id " + id));
     }
+
+
+
+
+
 
     private ServiceVisitDto toDto(ServiceVisitEntity e) {
         if (e == null) return null;
@@ -2210,10 +2243,14 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 .visitDatetime(e.getVisitDatetime())
                 .technicianId(e.getTechnicianId())
                 .visitNotes(e.getVisitNotes())
-                .meterReadingBefore(e.getMeterReadingBefore())
-                .meterReadingAfter(e.getMeterReadingAfter())
                 .solved(e.getSolved())
-                .partsUsed(null)
+                .partsUsed(e.getPartsUsed()) // ahora sí se devuelve el JSONB
+
+                // si existe meterReading relacionado, mapear sus campos
+                .takeMeterReading(e.getMeterReading() != null)
+                .reading(e.getMeterReading() != null ? e.getMeterReading().getReading() : null)
+                .readingNotes(e.getMeterReading() != null ? e.getMeterReading().getNotes() : null)
+
                 .build();
     }
 
@@ -2229,6 +2266,11 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
         e.setSolved(dto.getSolved() != null ? dto.getSolved() : false);
         e.setCreatedAt(OffsetDateTime.now());
         // partsUsed serialized to JSON if dto.partsUsed != null -> left as null for now
+        if (dto.getPartsUsed() != null) {
+            e.setPartsUsed(dto.getPartsUsed());
+        } else {
+            e.setPartsUsed(null); // 👈 explícito para que no intente castear
+        }
         e = repo.save(e);
         return toDto(e);
     }
