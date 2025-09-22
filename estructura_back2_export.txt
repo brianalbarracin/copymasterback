@@ -537,6 +537,24 @@ public class ServiceRequestController {
                 .build();
     }
 
+
+    @GetMapping("/{id}")
+    public ServerResponseDto getById(@PathVariable Long id) {
+        ServiceRequestDto request = service.getServiceRequestById(id);
+        if (request == null) {
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.NOT_FOUND.value())
+                    .message("Solicitud no encontrada")
+                    .data(null)
+                    .build();
+        }
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Solicitud obtenida")
+                .data(request)
+                .build();
+    }
+
     @GetMapping("/customer/{customerId}")
     public ServerResponseDto byCustomer(@PathVariable Long customerId) {
         return ServerResponseDto.builder()
@@ -585,10 +603,14 @@ package co.edu.sena.tu_unidad.controller;
 
 import co.edu.sena.tu_unidad.dto.ServerResponseDto;
 import co.edu.sena.tu_unidad.dto.ServiceVisitDto;
+import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
 import co.edu.sena.tu_unidad.service.ServiceVisitService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import java.util.List;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/visits")
@@ -605,6 +627,25 @@ public class ServiceVisitController {
                 .message("Visita creada")
                 .data(created)
                 .build();
+    }
+
+
+    // Actualizar visita
+    @PutMapping("/{id}")
+    public ResponseEntity<ServerResponseDto> updateVisit(@PathVariable Long id,
+                                                         @RequestBody ServiceVisitDto dto) {
+        ServiceVisitDto updated = service.updateServiceVisit(id, dto);
+        return ResponseEntity.ok(ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Visita actualizada")
+                .data(updated)
+                .build());
+    }
+
+    // Listar visitas por service_request_id
+    @GetMapping("/request/{requestId}")
+    public List<ServiceVisitDto> getByRequest(@PathVariable Long requestId) {
+        return service.getVisitsByRequest(requestId);  // ✅ correcto
     }
 }
 
@@ -1162,6 +1203,8 @@ public class MeterReadingEntity {
     private OffsetDateTime readingDate;
     private Long technicianId;
     private String notes;
+    @OneToOne(mappedBy = "meterReading")
+    private ServiceVisitEntity serviceVisit;
 }
 
 
@@ -1311,6 +1354,20 @@ public class ServiceVisitEntity {
     private Long meterReadingAfter;
     private Boolean solved;
     private OffsetDateTime createdAt;
+    @OneToOne
+    @JoinColumn(name = "meter_reading_id")
+    private MeterReadingEntity meterReading;
+
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
 }
 
 
@@ -1509,6 +1566,7 @@ import java.util.List;
 public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity, Long> {
     List<ServiceVisitEntity> findByServiceRequestId(Long serviceRequestId);
     List<ServiceVisitEntity> findByTechnicianId(Long technicianId);
+
 }
 
 
@@ -1597,7 +1655,7 @@ package co.edu.sena.tu_unidad.service;
 
 import co.edu.sena.tu_unidad.dto.ServiceRequestDto;
 import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
-
+import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -1611,6 +1669,8 @@ public interface ServiceRequestService {
     List<ServiceRequestDto> getServiceRequestsByMachine(Long machineId);
     // agrega métodos útiles para repetidos y reportes
     List<ServiceRequestEntity> getRequestsByCustomer(Long customerId);
+
+
 }
 
 
@@ -1627,6 +1687,7 @@ public interface ServiceVisitService {
     ServiceVisitDto createServiceVisit(ServiceVisitDto dto);
     List<ServiceVisitDto> getVisitsByRequest(Long requestId);
     List<ServiceVisitDto> getVisitsByTechnician(Long technicianId);
+    ServiceVisitDto updateServiceVisit(Long id, ServiceVisitDto dto);
 }
 
 
@@ -2095,6 +2156,7 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     public List<ServiceRequestEntity> getRequestsByCustomer(Long customerId) {
         return repository.findByCustomerId(customerId);
     }
+
 }
 
 
@@ -2119,6 +2181,26 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
 
     @Autowired
     private ServiceVisitRepository repo;
+
+    @Override
+    public ServiceVisitDto updateServiceVisit(Long id, ServiceVisitDto dto) {
+        return repo.findById(id)
+                .map(existing -> {
+                    existing.setTechnicianId(dto.getTechnicianId());
+                    existing.setVisitNotes(dto.getVisitNotes());
+                    existing.setSolved(dto.getSolved() != null ? dto.getSolved() : false);
+                    existing.setMeterReadingBefore(dto.getMeterReadingBefore());
+                    existing.setMeterReadingAfter(dto.getMeterReadingAfter());
+                    existing.setUpdatedAt(OffsetDateTime.now());
+
+                    // ⚡ Si luego migras a tabla meter_readings:
+                    // aquí deberías crear/actualizar el MeterReadingEntity y enlazarlo
+
+                    ServiceVisitEntity saved = repo.save(existing);
+                    return toDto(saved);
+                })
+                .orElseThrow(() -> new RuntimeException("Visita no encontrada con id " + id));
+    }
 
     private ServiceVisitDto toDto(ServiceVisitEntity e) {
         if (e == null) return null;

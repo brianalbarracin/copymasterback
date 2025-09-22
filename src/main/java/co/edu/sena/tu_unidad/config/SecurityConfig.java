@@ -46,6 +46,7 @@ public class SecurityConfig {
                         "/locations/**",
                         "/service-requests/**",
                         "/machines/**",
+                        "/visits/**",
                         "/customers/**").permitAll()
                 .anyRequest().authenticated()
             )

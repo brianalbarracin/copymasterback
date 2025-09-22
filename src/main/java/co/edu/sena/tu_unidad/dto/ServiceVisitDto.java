@@ -22,6 +22,9 @@ public class ServiceVisitDto {
     private Long meterReadingBefore;
     private Long meterReadingAfter;
     private Boolean solved;
+    private Boolean takeMeterReading;
+    private Long reading;        // valor de la lectura
+    private String readingNotes;
 }
 
 

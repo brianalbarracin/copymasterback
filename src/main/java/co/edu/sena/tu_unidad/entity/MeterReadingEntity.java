@@ -21,6 +21,8 @@ public class MeterReadingEntity {
     private OffsetDateTime readingDate;
     private Long technicianId;
     private String notes;
+    @OneToOne(mappedBy = "meterReading")
+    private ServiceVisitEntity serviceVisit;
 }
 
 

@@ -8,6 +8,7 @@ import java.util.List;
 public interface ServiceVisitRepository extends JpaRepository<ServiceVisitEntity, Long> {
     List<ServiceVisitEntity> findByServiceRequestId(Long serviceRequestId);
     List<ServiceVisitEntity> findByTechnicianId(Long technicianId);
+
 }
 
 

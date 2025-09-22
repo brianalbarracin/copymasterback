@@ -8,6 +8,7 @@ public interface ServiceVisitService {
     ServiceVisitDto createServiceVisit(ServiceVisitDto dto);
     List<ServiceVisitDto> getVisitsByRequest(Long requestId);
     List<ServiceVisitDto> getVisitsByTechnician(Long technicianId);
+    ServiceVisitDto updateServiceVisit(Long id, ServiceVisitDto dto);
 }
 
 
