@@ -5,6 +5,8 @@ import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
 import co.edu.sena.tu_unidad.repository.ServiceVisitRepository;
 import co.edu.sena.tu_unidad.service.ServiceVisitService;
 import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
+import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,8 +20,8 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
 
     @Autowired
     private ServiceVisitRepository repo;
-
-
+    @Autowired
+    private ServiceRequestRepository serviceRequestRepository;
     @Autowired
     private MeterReadingRepository meterReadingRepository;
 
@@ -39,8 +41,12 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                         reading.setTechnicianId(dto.getTechnicianId());
                         reading.setNotes(dto.getReadingNotes());
 
-                        // si tu ServiceVisit tiene referencia a machineId, puedes usarla aquí
-                        reading.setMachineId(existing.getServiceRequestId()); // ⚠️ ajustar según tu modelo
+                        // ✅ buscar el request asociado y sacar el machineId
+                        ServiceRequestEntity request = serviceRequestRepository
+                                .findById(existing.getServiceRequestId())
+                                .orElseThrow(() -> new RuntimeException("Solicitud no encontrada con id " + existing.getServiceRequestId()));
+
+                        reading.setMachineId(request.getMachineId()); // ✅ asignamos el id real de la máquina
 
                         meterReadingRepository.save(reading);
                         existing.setMeterReading(reading);
@@ -55,7 +61,6 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 })
                 .orElseThrow(() -> new RuntimeException("Visita no encontrada con id " + id));
     }
-
 
 
 

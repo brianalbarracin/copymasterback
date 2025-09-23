@@ -882,6 +882,29 @@ public class MachineDto {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\MeterReadingDto.java =====
+package co.edu.sena.tu_unidad.dto;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.OffsetDateTime;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class MeterReadingDto {
+
+    private Long id;
+    private Long machineId;
+    private Long reading;
+    private OffsetDateTime readingDate;
+    private Long technicianId;
+    private String notes;
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ServerResponseDto.java =====
 package co.edu.sena.tu_unidad.dto;
 
@@ -1190,6 +1213,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "meter_readings")
@@ -1208,6 +1232,7 @@ public class MeterReadingEntity {
     private Long technicianId;
     private String notes;
     @OneToOne(mappedBy = "meterReading")
+    @Transient // ✅ Evitar serialización circular
     private ServiceVisitEntity serviceVisit;
 }
 

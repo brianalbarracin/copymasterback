@@ -47,6 +47,7 @@ public class ServiceVisitEntity {
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+
 }
 
 

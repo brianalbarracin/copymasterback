@@ -25,6 +25,7 @@ public class ServiceVisitDto {
     private Boolean takeMeterReading;
     private Long reading;        // valor de la lectura
     private String readingNotes;
+    private Long machineId;
 }
 
 
