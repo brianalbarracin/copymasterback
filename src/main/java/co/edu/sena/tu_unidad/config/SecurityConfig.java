@@ -44,6 +44,7 @@ public class SecurityConfig {
                         "/machine-movements/**",
                         "/meter-readings/**",
                         "/parts/**",
+                        "/visit-parts/**",
                         "/locations/**",
                         "/service-requests/**",
                         "/machines/**",
