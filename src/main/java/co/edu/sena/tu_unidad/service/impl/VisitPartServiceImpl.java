@@ -55,6 +55,8 @@ public class VisitPartServiceImpl implements VisitPartService {
                         .qty(v.getQty())
                         .serialNumber(v.getSerialNumber())
                         .cost(v.getCost())
+                        .name(v.getPart().getName())   // <-- agregado
+                        .sku(v.getPart().getSku())
                         .build())
                 .collect(Collectors.toList());
     }

@@ -14,4 +14,6 @@ public class VisitPartDto {
     private Integer qty;
     private String serialNumber;
     private BigDecimal cost;
+    private String name;
+    private String sku;
 }
