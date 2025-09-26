@@ -71,6 +71,8 @@ public class SecurityConfig {
                         "/mach/service-visits/**",
                         "/machine-movements/**",
                         "/meter-readings/**",
+                        "/parts/**",
+                        "/visit-parts/**",
                         "/locations/**",
                         "/service-requests/**",
                         "/machines/**",
@@ -716,6 +718,42 @@ public class TechnicianController {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\VisitPartController.java =====
+package co.edu.sena.tu_unidad.controller;
+
+import co.edu.sena.tu_unidad.dto.VisitPartDto;
+import co.edu.sena.tu_unidad.service.VisitPartService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/visit-parts")
+@RequiredArgsConstructor
+public class VisitPartController {
+
+    private final VisitPartService visitPartService;
+
+    @PostMapping
+    public ResponseEntity<VisitPartDto> create(@RequestBody VisitPartDto dto) {
+        return ResponseEntity.ok(visitPartService.create(dto));
+    }
+
+    @GetMapping("/visit/{visitId}")
+    public ResponseEntity<List<VisitPartDto>> getByServiceVisit(@PathVariable Long visitId) {
+        return ResponseEntity.ok(visitPartService.getByServiceVisit(visitId));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        visitPartService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\domain\enums\CommChannel.java =====
 package co.edu.sena.tu_unidad.domain.enums;
 
@@ -995,6 +1033,7 @@ public class ServiceVisitDto {
     private Boolean takeMeterReading;
     private Long reading;        // valor de la lectura
     private String readingNotes;
+    private Long machineId;
 }
 
 
@@ -1047,6 +1086,28 @@ public class UserDto {
 
 
 // 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\VisitPartDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.*;
+import java.math.BigDecimal;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class VisitPartDto {
+    private Long id;
+    private Long serviceVisitId;
+    private Long partId;
+    private Integer qty;
+    private String serialNumber;
+    private BigDecimal cost;
+    private String name;
+    private String sku;
+}
+
 
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\CustomerEntity.java =====
 package co.edu.sena.tu_unidad.entity;
@@ -1213,7 +1274,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.OffsetDateTime;
-import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "meter_readings")
@@ -1402,6 +1462,7 @@ public class ServiceVisitEntity {
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+
 }
 
 
@@ -1478,6 +1539,46 @@ public class UserEntity {
 
 
 // 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\VisitPartEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "visit_parts")
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+public class VisitPartEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_visit_id", nullable = false)
+    private ServiceVisitEntity serviceVisit;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "part_id", nullable = false)
+    private PartEntity part;
+
+    @Column(nullable = false)
+    private Integer qty;
+
+    private String serialNumber;
+
+    private BigDecimal cost;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private OffsetDateTime createdAt;
+}
+
 
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\CustomerRepository.java =====
 package co.edu.sena.tu_unidad.repository;
@@ -1635,6 +1736,19 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\VisitPartRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.VisitPartEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface VisitPartRepository extends JpaRepository<VisitPartEntity, Long> {
+    List<VisitPartEntity> findByServiceVisitId(Long serviceVisitId);
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\AuthService.java =====
 package co.edu.sena.tu_unidad.service;
 
@@ -1767,6 +1881,20 @@ public interface UserService {
 
 
 // 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\VisitPartService.java =====
+package co.edu.sena.tu_unidad.service;
+
+import co.edu.sena.tu_unidad.dto.VisitPartDto;
+
+import java.util.List;
+
+public interface VisitPartService {
+    VisitPartDto create(VisitPartDto dto);
+    List<VisitPartDto> getByServiceVisit(Long serviceVisitId);
+    void delete(Long id);
+}
+
 
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\AuthServiceImpl.java =====
 package co.edu.sena.tu_unidad.service.impl;
@@ -2204,6 +2332,8 @@ import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
 import co.edu.sena.tu_unidad.repository.ServiceVisitRepository;
 import co.edu.sena.tu_unidad.service.ServiceVisitService;
 import co.edu.sena.tu_unidad.entity.MeterReadingEntity;
+import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
+import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -2217,8 +2347,8 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
 
     @Autowired
     private ServiceVisitRepository repo;
-
-
+    @Autowired
+    private ServiceRequestRepository serviceRequestRepository;
     @Autowired
     private MeterReadingRepository meterReadingRepository;
 
@@ -2238,8 +2368,12 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                         reading.setTechnicianId(dto.getTechnicianId());
                         reading.setNotes(dto.getReadingNotes());
 
-                        // si tu ServiceVisit tiene referencia a machineId, puedes usarla aquí
-                        reading.setMachineId(existing.getServiceRequestId()); // ⚠️ ajustar según tu modelo
+                        // ✅ buscar el request asociado y sacar el machineId
+                        ServiceRequestEntity request = serviceRequestRepository
+                                .findById(existing.getServiceRequestId())
+                                .orElseThrow(() -> new RuntimeException("Solicitud no encontrada con id " + existing.getServiceRequestId()));
+
+                        reading.setMachineId(request.getMachineId()); // ✅ asignamos el id real de la máquina
 
                         meterReadingRepository.save(reading);
                         existing.setMeterReading(reading);
@@ -2254,7 +2388,6 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 })
                 .orElseThrow(() -> new RuntimeException("Visita no encontrada con id " + id));
     }
-
 
 
 
@@ -2517,4 +2650,76 @@ public class UserServiceImpl implements UserService {
 
 
 // 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\VisitPartServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.VisitPartDto;
+import co.edu.sena.tu_unidad.entity.PartEntity;
+import co.edu.sena.tu_unidad.entity.ServiceVisitEntity;
+import co.edu.sena.tu_unidad.entity.VisitPartEntity;
+import co.edu.sena.tu_unidad.repository.PartRepository;
+import co.edu.sena.tu_unidad.repository.ServiceVisitRepository;
+import co.edu.sena.tu_unidad.repository.VisitPartRepository;
+import co.edu.sena.tu_unidad.service.VisitPartService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class VisitPartServiceImpl implements VisitPartService {
+
+    private final VisitPartRepository visitPartRepository;
+    private final ServiceVisitRepository serviceVisitRepository;
+    private final PartRepository partRepository;
+
+    @Override
+    public VisitPartDto create(VisitPartDto dto) {
+        ServiceVisitEntity visit = serviceVisitRepository.findById(dto.getServiceVisitId())
+                .orElseThrow(() -> new RuntimeException("ServiceVisit not found"));
+
+        PartEntity part = partRepository.findById(dto.getPartId())
+                .orElseThrow(() -> new RuntimeException("Part not found"));
+
+        VisitPartEntity entity = VisitPartEntity.builder()
+                .serviceVisit(visit)
+                .part(part)
+                .qty(dto.getQty())
+                .serialNumber(dto.getSerialNumber())
+                .cost(dto.getCost())
+                .build();
+
+        VisitPartEntity saved = visitPartRepository.save(entity);
+
+        dto.setId(saved.getId());
+        return dto;
+    }
+
+    @Override
+    public List<VisitPartDto> getByServiceVisit(Long serviceVisitId) {
+        return visitPartRepository.findByServiceVisitId(serviceVisitId)
+                .stream()
+                .map(v -> VisitPartDto.builder()
+                        .id(v.getId())
+                        .serviceVisitId(v.getServiceVisit().getId())
+                        .partId(v.getPart().getId())
+                        .qty(v.getQty())
+                        .serialNumber(v.getSerialNumber())
+                        .cost(v.getCost())
+                        .name(v.getPart().getName())   // <-- agregado
+                        .sku(v.getPart().getSku())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void delete(Long id) {
+        visitPartRepository.deleteById(id);
+    }
+}
+
+
 

@@ -95,6 +95,16 @@ public class ServiceRequestController {
                 .data(updated)
                 .build();
     }
+    @GetMapping("/machine/{machineId}")
+    public ServerResponseDto byMachine(@PathVariable Long machineId) {
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Solicitudes por máquina")
+                .data(service.getServiceRequestsByMachine(machineId)) // necesitas implementarlo en ServiceRequestService
+                .build();
+    }
+
+
 }
 
 
