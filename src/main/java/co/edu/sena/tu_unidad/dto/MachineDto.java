@@ -20,7 +20,9 @@ public class MachineDto {
     private Long currentLocationId;
     private MachineStatus status;
     private Long currentCustomerId;
-    private Long initialReading;   // lectura inicial
+    private Long initialReading;
+    private Long initialColorReading;
+    private Long initialScannerReading;// lectura inicial
     private String readingNotes;
     private String notes;
 

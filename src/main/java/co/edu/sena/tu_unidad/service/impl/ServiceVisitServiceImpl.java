@@ -37,6 +37,8 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                     if (Boolean.TRUE.equals(dto.getTakeMeterReading()) && dto.getReading() != null) {
                         MeterReadingEntity reading = new MeterReadingEntity();
                         reading.setReading(dto.getReading());
+                        reading.setColorReading(dto.getColorReading());
+                        reading.setScannerReading(dto.getScannerReading());
                         reading.setReadingDate(OffsetDateTime.now());
                         reading.setTechnicianId(dto.getTechnicianId());
                         reading.setNotes(dto.getReadingNotes());

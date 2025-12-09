@@ -24,6 +24,11 @@ public class MeterReadingEntity {
     @OneToOne(mappedBy = "meterReading")
     @Transient // ✅ Evitar serialización circular
     private ServiceVisitEntity serviceVisit;
+    @Column(name = "color_reading")
+    private Long colorReading;
+
+    @Column(name = "scanner_reading")
+    private Long scannerReading;
 }
 
 

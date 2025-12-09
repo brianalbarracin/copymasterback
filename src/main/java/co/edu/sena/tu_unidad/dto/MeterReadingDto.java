@@ -17,4 +17,6 @@ public class MeterReadingDto {
     private OffsetDateTime readingDate;
     private Long technicianId;
     private String notes;
+    private Long colorReading;
+    private Long scannerReading;
 }

@@ -99,6 +99,8 @@ public class MachineServiceImpl implements MachineService {
             MeterReadingEntity mr = MeterReadingEntity.builder()
                     .machineId(e.getId())
                     .reading(dto.getInitialReading())
+                    .colorReading(dto.getInitialColorReading())     // si lo quieres manejar
+                    .scannerReading(dto.getInitialScannerReading()) // si lo quieres manejar
                     .readingDate(OffsetDateTime.now())
                     .notes(dto.getReadingNotes() != null ? dto.getReadingNotes() : "Lectura inicial")
                     .build();
