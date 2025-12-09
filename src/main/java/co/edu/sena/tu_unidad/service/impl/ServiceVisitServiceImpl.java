@@ -82,6 +82,10 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 // si existe meterReading relacionado, mapear sus campos
                 .takeMeterReading(e.getMeterReading() != null)
                 .reading(e.getMeterReading() != null ? e.getMeterReading().getReading() : null)
+                .colorReading(e.getMeterReading() != null ? e.getMeterReading().getColorReading() : null)
+
+                // ✔ Lectura Scanner
+                .scannerReading(e.getMeterReading() != null ? e.getMeterReading().getScannerReading() : null)
                 .readingNotes(e.getMeterReading() != null ? e.getMeterReading().getNotes() : null)
 
                 .build();
