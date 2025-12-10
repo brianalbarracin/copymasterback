@@ -921,7 +921,9 @@ public class MachineDto {
     private Long currentLocationId;
     private MachineStatus status;
     private Long currentCustomerId;
-    private Long initialReading;   // lectura inicial
+    private Long initialReading;
+    private Long initialColorReading;
+    private Long initialScannerReading;// lectura inicial
     private String readingNotes;
     private String notes;
 
@@ -950,6 +952,8 @@ public class MeterReadingDto {
     private OffsetDateTime readingDate;
     private Long technicianId;
     private String notes;
+    private Long colorReading;
+    private Long scannerReading;
 }
 
 
@@ -1042,6 +1046,8 @@ public class ServiceVisitDto {
     private Boolean solved;
     private Boolean takeMeterReading;
     private Long reading;        // valor de la lectura
+    private Long colorReading;
+    private Long scannerReading;
     private String readingNotes;
     private Long machineId;
 }
@@ -1304,6 +1310,11 @@ public class MeterReadingEntity {
     @OneToOne(mappedBy = "meterReading")
     @Transient // ✅ Evitar serialización circular
     private ServiceVisitEntity serviceVisit;
+    @Column(name = "color_reading")
+    private Long colorReading;
+
+    @Column(name = "scanner_reading")
+    private Long scannerReading;
 }
 
 
@@ -2157,6 +2168,8 @@ public class MachineServiceImpl implements MachineService {
             MeterReadingEntity mr = MeterReadingEntity.builder()
                     .machineId(e.getId())
                     .reading(dto.getInitialReading())
+                    .colorReading(dto.getInitialColorReading())     // si lo quieres manejar
+                    .scannerReading(dto.getInitialScannerReading()) // si lo quieres manejar
                     .readingDate(OffsetDateTime.now())
                     .notes(dto.getReadingNotes() != null ? dto.getReadingNotes() : "Lectura inicial")
                     .build();
@@ -2374,6 +2387,8 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                     if (Boolean.TRUE.equals(dto.getTakeMeterReading()) && dto.getReading() != null) {
                         MeterReadingEntity reading = new MeterReadingEntity();
                         reading.setReading(dto.getReading());
+                        reading.setColorReading(dto.getColorReading());
+                        reading.setScannerReading(dto.getScannerReading());
                         reading.setReadingDate(OffsetDateTime.now());
                         reading.setTechnicianId(dto.getTechnicianId());
                         reading.setNotes(dto.getReadingNotes());
@@ -2417,6 +2432,10 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 // si existe meterReading relacionado, mapear sus campos
                 .takeMeterReading(e.getMeterReading() != null)
                 .reading(e.getMeterReading() != null ? e.getMeterReading().getReading() : null)
+                .colorReading(e.getMeterReading() != null ? e.getMeterReading().getColorReading() : null)
+
+                // ✔ Lectura Scanner
+                .scannerReading(e.getMeterReading() != null ? e.getMeterReading().getScannerReading() : null)
                 .readingNotes(e.getMeterReading() != null ? e.getMeterReading().getNotes() : null)
 
                 .build();

@@ -6,6 +6,7 @@ import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 import co.edu.sena.tu_unidad.service.ServiceRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.util.RequestNumberGenerator;
 import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 
 import java.time.OffsetDateTime;
@@ -18,6 +19,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Autowired
     private ServiceRequestRepository repo;
+
+    @Autowired
+    private RequestNumberGenerator numberGenerator; // Agregar esta línea
+
 
     private ServiceRequestDto toDto(ServiceRequestEntity e) {
         if (e == null) return null;
@@ -64,7 +69,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     @Override
     public ServiceRequestDto createServiceRequest(ServiceRequestDto dto) {
         ServiceRequestEntity e = new ServiceRequestEntity();
-        e.setRequestNumber(dto.getRequestNumber() != null ? dto.getRequestNumber() : "SR-" + System.currentTimeMillis());
+
+        String requestNumber = numberGenerator.generateNextNumber(dto.getServiceType());
+        e.setRequestNumber(requestNumber);
+
         e.setCustomerId(dto.getCustomerId());
         e.setMachineId(dto.getMachineId());
         e.setCompanySerial(dto.getCompanySerial());

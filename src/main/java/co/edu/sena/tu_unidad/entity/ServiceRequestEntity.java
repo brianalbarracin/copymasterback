@@ -52,9 +52,9 @@ public class ServiceRequestEntity {
     private OffsetDateTime createdAt;
 
     // 👉 contador estático para requestNumber
-    private static long requestCounter = 2000;
+    //private static long requestCounter = 2000;
 
-    @PrePersist
+    /*@PrePersist
     public void prePersist() {
         if (this.assignedAt == null) {
             this.assignedAt = OffsetDateTime.now();
@@ -71,7 +71,7 @@ public class ServiceRequestEntity {
         if (this.requestNumber == null) {
             this.requestNumber = String.valueOf(requestCounter++);
         }
-    }
+    }*/
 }
 
 
