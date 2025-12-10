@@ -804,12 +804,21 @@ public enum MovementType {
 package co.edu.sena.tu_unidad.domain.enums;
 
 public enum ServiceType {
-    correctivo,
-    preventivo,
-    diagnostico,
-    toner,
-    toma_contador,
-    otro
+
+    servicio_tecnico("ST"),  // Servicio Técnico
+    lectura_contador("LC"),
+    remoto("R"),  // Agregado
+    otro("O");  // Por defecto
+
+    private final String codigo;
+
+    ServiceType(String codigo) {
+        this.codigo = codigo;
+    }
+
+    public String getCodigo() {
+        return codigo;
+    }
 }
 
 
@@ -1408,9 +1417,9 @@ public class ServiceRequestEntity {
     private OffsetDateTime createdAt;
 
     // 👉 contador estático para requestNumber
-    private static long requestCounter = 2000;
+    //private static long requestCounter = 2000;
 
-    @PrePersist
+    /*@PrePersist
     public void prePersist() {
         if (this.assignedAt == null) {
             this.assignedAt = OffsetDateTime.now();
@@ -1427,7 +1436,7 @@ public class ServiceRequestEntity {
         if (this.requestNumber == null) {
             this.requestNumber = String.valueOf(requestCounter++);
         }
-    }
+    }*/
 }
 
 
@@ -2216,6 +2225,74 @@ public class MachineServiceImpl implements MachineService {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\RequestCounterInitializer.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.domain.enums.ServiceType;
+import co.edu.sena.tu_unidad.service.impl.RequestNumberGenerator;
+import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
+
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+
+@Service
+public class RequestCounterInitializer {
+    @Autowired
+    private ServiceRequestRepository requestRepository;
+
+    @Autowired
+    private RequestNumberGenerator numberGenerator;
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void initializeCounters() {
+        System.out.println("🚀 INICIALIZANDO CONTADORES DE SOLICITUDES...");
+
+        // Obtener la fecha de hoy
+        LocalDate today = LocalDate.now();
+        String todayKey = today.format(DateTimeFormatter.ofPattern("ddMMyy"));
+
+        // Obtener todas las solicitudes del día de hoy
+        // CORRECCIÓN: Usar LocalDateTime y luego convertirlo a OffsetDateTime
+        LocalDateTime startOfDayLocal = today.atStartOfDay();
+        LocalDateTime endOfDayLocal = today.plusDays(1).atStartOfDay();
+
+        // Convertir a OffsetDateTime con UTC
+        OffsetDateTime startOfDay = startOfDayLocal.atOffset(ZoneOffset.UTC);
+        OffsetDateTime endOfDay = endOfDayLocal.atOffset(ZoneOffset.UTC);
+
+        List<co.edu.sena.tu_unidad.entity.ServiceRequestEntity> todayRequests =
+                requestRepository.findByReportedAtBetween(startOfDay, endOfDay);
+
+        System.out.println("Solicitudes encontradas hoy: " + todayRequests.size());
+
+        // Inicializar contadores para cada tipo de servicio
+        for (ServiceType serviceType : ServiceType.values()) {
+            long countForType = todayRequests.stream()
+                    .filter(r -> r.getServiceType() == serviceType)
+                    .count();
+
+            if (countForType > 0) {
+                numberGenerator.initializeCounter(serviceType.name(), todayKey, (int) countForType);
+                System.out.println("Contador para " + serviceType + ": " + countForType);
+            }
+        }
+
+        System.out.println("✅ CONTADORES INICIALIZADOS CORRECTAMENTE");
+    }
+
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ServiceRequestServiceImpl.java =====
 package co.edu.sena.tu_unidad.service.impl;
 
@@ -2225,6 +2302,7 @@ import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 import co.edu.sena.tu_unidad.service.ServiceRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.service.impl.RequestNumberGenerator;
 import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 
 import java.time.OffsetDateTime;
@@ -2237,6 +2315,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
 
     @Autowired
     private ServiceRequestRepository repo;
+
+    @Autowired
+    private RequestNumberGenerator numberGenerator; // Agregar esta línea
+
 
     private ServiceRequestDto toDto(ServiceRequestEntity e) {
         if (e == null) return null;
@@ -2283,7 +2365,10 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
     @Override
     public ServiceRequestDto createServiceRequest(ServiceRequestDto dto) {
         ServiceRequestEntity e = new ServiceRequestEntity();
-        e.setRequestNumber(dto.getRequestNumber() != null ? dto.getRequestNumber() : "SR-" + System.currentTimeMillis());
+
+        String requestNumber = numberGenerator.generateNextNumber(dto.getServiceType());
+        e.setRequestNumber(requestNumber);
+
         e.setCustomerId(dto.getCustomerId());
         e.setMachineId(dto.getMachineId());
         e.setCompanySerial(dto.getCompanySerial());
@@ -2750,5 +2835,48 @@ public class VisitPartServiceImpl implements VisitPartService {
     }
 }
 
+
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\util\RequestNumberGenerator.java =====
+package co.edu.sena.tu_unidad.util;
+
+import co.edu.sena.tu_unidad.domain.enums.ServiceType;
+import org.springframework.stereotype.Component;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+public class RequestNumberGenerator {
+
+    private final Map<String, Integer> dailyCounters = new ConcurrentHashMap<>();
+
+    public String generateNextNumber(ServiceType serviceType) {
+        LocalDate today = LocalDate.now();
+        String dateKey = today.format(DateTimeFormatter.ofPattern("ddMMyy"));
+
+        // Crear clave para el tipo de servicio en el día actual
+        String counterKey = serviceType.name() + "_" + dateKey;
+
+        // Obtener o inicializar el contador para este tipo en este día
+        int currentCounter = dailyCounters.getOrDefault(counterKey, 0) + 1;
+        dailyCounters.put(counterKey, currentCounter);
+
+        // Formatear contador a 3 dígitos
+        String counterStr = String.format("%03d", currentCounter);
+
+        // Obtener código del tipo de servicio
+        String typeCode = serviceType.getCodigo();
+
+        return counterStr + typeCode + dateKey;
+    }
+
+    // Método para inicializar contadores desde base de datos al iniciar
+    public void initializeCounter(String serviceType, String dateKey, int lastCounter) {
+        String counterKey = serviceType + "_" + dateKey;
+        dailyCounters.put(counterKey, lastCounter);
+    }
+}
 
 
