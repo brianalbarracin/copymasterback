@@ -47,6 +47,7 @@ public class SecurityConfig {
                         "/visit-parts/**",
                         "/locations/**",
                         "/service-requests/**",
+                        "/reading-toner/**",
                         "/machines/**",
                         "/visits/**",
                         "/customers/**").permitAll()
