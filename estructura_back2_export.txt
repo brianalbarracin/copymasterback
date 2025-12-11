@@ -509,8 +509,10 @@ import co.edu.sena.tu_unidad.service.ServiceVisitService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import co.edu.sena.tu_unidad.domain.enums.ServiceType;
 
 import java.util.List;
+import java.util.Collections;
 
 @RestController
 @RequestMapping("/service-requests")
@@ -524,11 +526,44 @@ public class ServiceRequestController {
 
     @GetMapping
     public ServerResponseDto getAll() {
-        return ServerResponseDto.builder()
-                .status(HttpStatus.OK.value())
-                .message("Solicitudes obtenidas")
-                .data(service.getAllServiceRequests())
-                .build();
+        System.out.println("📋 GET /service-requests - Obteniendo todas las solicitudes");
+        System.out.println("📋 Hora: " + new java.util.Date());
+
+        try {
+            List<ServiceRequestDto> requests = service.getAllServiceRequests();
+            System.out.println("✅ Solicitudes obtenidas: " + requests.size());
+
+            if (requests.isEmpty()) {
+                System.out.println("⚠️ No hay solicitudes en la base de datos");
+                // Devuelve una lista vacía en lugar de null
+                return ServerResponseDto.builder()
+                        .status(HttpStatus.OK.value())
+                        .message("No hay solicitudes")
+                        .data(Collections.emptyList())
+                        .build();
+            }
+
+            System.out.println("📋 Primera solicitud ID: " + requests.get(0).getId());
+            System.out.println("📋 Primera solicitud RequestNumber: " + requests.get(0).getRequestNumber());
+            System.out.println("📋 Primera solicitud ServiceType: " + requests.get(0).getServiceType());
+
+            ServerResponseDto response = ServerResponseDto.builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Solicitudes obtenidas")
+                    .data(requests)
+                    .build();
+
+            System.out.println("✅ Response creado, status: " + response.getStatus());
+            return response;
+        } catch (Exception e) {
+            System.out.println("❌ Error obteniendo solicitudes: " + e.getMessage());
+            e.printStackTrace();
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .message("Error al obtener solicitudes: " + e.getMessage())
+                    .data(null)
+                    .build();
+        }
     }
 
     @GetMapping("/pending")
@@ -604,6 +639,41 @@ public class ServiceRequestController {
                 .data(service.getServiceRequestsByMachine(machineId)) // necesitas implementarlo en ServiceRequestService
                 .build();
     }
+
+    @GetMapping("/test")
+    public ServerResponseDto test() {
+        System.out.println("🧪 Probando endpoint /test");
+
+        try {
+            // Crear un DTO simple para prueba
+            ServiceRequestDto testDto = ServiceRequestDto.builder()
+                    .id(1L)
+                    .requestNumber("001ST091225")
+                    .customerId(1L)
+                    .machineId(1L)
+                    .serviceType(ServiceType.servicio_tecnico)  // Usa tu enum
+                    .status("ABIERTA")
+                    .build();
+
+            System.out.println("🧪 DTO de prueba creado: " + testDto);
+
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.OK.value())
+                    .message("Test exitoso")
+                    .data(testDto)
+                    .build();
+        } catch (Exception e) {
+            System.out.println("❌ Error en test: " + e.getMessage());
+            e.printStackTrace();
+            return ServerResponseDto.builder()
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .message("Error en test: " + e.getMessage())
+                    .data(null)
+                    .build();
+        }
+    }
+
+
 
 
 }
@@ -807,6 +877,10 @@ public enum ServiceType {
 
     servicio_tecnico("ST"),  // Servicio Técnico
     lectura_contador("LC"),
+    diagnostico("STD"),
+    toma_contador("TC"),
+    correctivo("C"),
+    toner("TN"),
     remoto("R"),  // Agregado
     otro("O");  // Por defecto
 
@@ -2229,12 +2303,11 @@ public class MachineServiceImpl implements MachineService {
 package co.edu.sena.tu_unidad.service.impl;
 
 import co.edu.sena.tu_unidad.domain.enums.ServiceType;
-import co.edu.sena.tu_unidad.service.impl.RequestNumberGenerator;
 import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
+import co.edu.sena.tu_unidad.service.impl.RequestNumberGenerator;
 
 import org.springframework.stereotype.Service;
 
@@ -2293,6 +2366,49 @@ public class RequestCounterInitializer {
 }
 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\RequestNumberGenerator.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.domain.enums.ServiceType;
+import org.springframework.stereotype.Component;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Component
+public class RequestNumberGenerator {
+
+    private final Map<String, Integer> dailyCounters = new ConcurrentHashMap<>();
+
+    public String generateNextNumber(ServiceType serviceType) {
+        LocalDate today = LocalDate.now();
+        String dateKey = today.format(DateTimeFormatter.ofPattern("ddMMyy"));
+
+        // Crear clave para el tipo de servicio en el día actual
+        String counterKey = serviceType.name() + "_" + dateKey;
+
+        // Obtener o inicializar el contador para este tipo en este día
+        int currentCounter = dailyCounters.getOrDefault(counterKey, 0) + 1;
+        dailyCounters.put(counterKey, currentCounter);
+
+        // Formatear contador a 3 dígitos
+        String counterStr = String.format("%03d", currentCounter);
+
+        // Obtener código del tipo de servicio
+        String typeCode = serviceType.getCodigo();
+
+        return counterStr + typeCode + dateKey;
+    }
+
+    // Método para inicializar contadores desde base de datos al iniciar
+    public void initializeCounter(String serviceType, String dateKey, int lastCounter) {
+        String counterKey = serviceType + "_" + dateKey;
+        dailyCounters.put(counterKey, lastCounter);
+    }
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ServiceRequestServiceImpl.java =====
 package co.edu.sena.tu_unidad.service.impl;
 
@@ -2303,7 +2419,6 @@ import co.edu.sena.tu_unidad.service.ServiceRequestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import co.edu.sena.tu_unidad.service.impl.RequestNumberGenerator;
-import co.edu.sena.tu_unidad.repository.ServiceRequestRepository;
 
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
@@ -2835,48 +2950,5 @@ public class VisitPartServiceImpl implements VisitPartService {
     }
 }
 
-
-
-===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\util\RequestNumberGenerator.java =====
-package co.edu.sena.tu_unidad.util;
-
-import co.edu.sena.tu_unidad.domain.enums.ServiceType;
-import org.springframework.stereotype.Component;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-@Component
-public class RequestNumberGenerator {
-
-    private final Map<String, Integer> dailyCounters = new ConcurrentHashMap<>();
-
-    public String generateNextNumber(ServiceType serviceType) {
-        LocalDate today = LocalDate.now();
-        String dateKey = today.format(DateTimeFormatter.ofPattern("ddMMyy"));
-
-        // Crear clave para el tipo de servicio en el día actual
-        String counterKey = serviceType.name() + "_" + dateKey;
-
-        // Obtener o inicializar el contador para este tipo en este día
-        int currentCounter = dailyCounters.getOrDefault(counterKey, 0) + 1;
-        dailyCounters.put(counterKey, currentCounter);
-
-        // Formatear contador a 3 dígitos
-        String counterStr = String.format("%03d", currentCounter);
-
-        // Obtener código del tipo de servicio
-        String typeCode = serviceType.getCodigo();
-
-        return counterStr + typeCode + dateKey;
-    }
-
-    // Método para inicializar contadores desde base de datos al iniciar
-    public void initializeCounter(String serviceType, String dateKey, int lastCounter) {
-        String counterKey = serviceType + "_" + dateKey;
-        dailyCounters.put(counterKey, lastCounter);
-    }
-}
 
 

@@ -4,6 +4,7 @@ C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unida
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\LoginRequestDto.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\CustomerController.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ServerResponseDto.java
+C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ReadingTonerDto.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\RequestNumberGenerator.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\MeterReadingRepository.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\LocationDto.java
@@ -21,9 +22,11 @@ C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unida
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\TechnicianDto.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\MachineService.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\LocationRepository.java
+C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\ReadingTonerController.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\RequestCounterInitializer.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\LocationController.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ServiceVisitDto.java
+C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\ReadingTonerService.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\VisitPartController.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\MachineServiceImpl.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\VisitPartRepository.java
@@ -36,12 +39,14 @@ C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unida
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\VisitPartDto.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\PartController.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\UserService.java
+C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\ReadingTonerRepository.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\MeterReadingDto.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\MachineMovementRepository.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\ServiceRequestService.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\TechnicianEntity.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ServiceVisitServiceImpl.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\MachineMovementEntity.java
+C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\ReadingTonerEntity.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ServiceRequestServiceImpl.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\CustomerDto.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\UserDto.java
@@ -53,6 +58,7 @@ C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unida
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\ServiceVisitService.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\domain\enums\MovementType.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\CustomerEntity.java
+C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ReadingTonerServiceImpl.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\LocationEntity.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\ServiceVisitRepository.java
 C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\AuthServiceImpl.java

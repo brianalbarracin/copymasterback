@@ -28,6 +28,15 @@ public class ServiceVisitDto {
     private Long scannerReading;
     private String readingNotes;
     private Long machineId;
+    // Mediciones de toner (nuevo)
+    private Boolean takeTonerReading;
+    private Integer tonerLevelK;
+    private Integer tonerLevelC;
+    private Integer tonerLevelM;
+    private Integer tonerLevelY;
+    private String tonerNotes;
+    private Long tonerReadingId; // Para referencia al registro de toner
+
 }
 
 

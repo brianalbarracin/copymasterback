@@ -10,6 +10,8 @@ import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.entity.ReadingTonerEntity;
+import co.edu.sena.tu_unidad.repository.ReadingTonerRepository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -24,6 +26,8 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
     private ServiceRequestRepository serviceRequestRepository;
     @Autowired
     private MeterReadingRepository meterReadingRepository;
+    @Autowired
+    private ReadingTonerRepository readingTonerRepository;  // Nuevo
 
     @Override
     public ServiceVisitDto updateServiceVisit(Long id, ServiceVisitDto dto) {
@@ -54,6 +58,33 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                         existing.setMeterReading(reading);
                     }
 
+// Manejo de medición de toner (NUEVO)
+                    if (Boolean.TRUE.equals(dto.getTakeTonerReading()) &&
+                            (dto.getTonerLevelK() != null || dto.getTonerLevelC() != null ||
+                                    dto.getTonerLevelM() != null || dto.getTonerLevelY() != null)) {
+
+                        ReadingTonerEntity tonerReading = new ReadingTonerEntity();
+                        tonerReading.setLevelK(dto.getTonerLevelK());
+                        tonerReading.setLevelC(dto.getTonerLevelC());
+                        tonerReading.setLevelM(dto.getTonerLevelM());
+                        tonerReading.setLevelY(dto.getTonerLevelY());
+                        tonerReading.setReadingDate(OffsetDateTime.now());
+                        tonerReading.setTechnicianId(dto.getTechnicianId());
+                        tonerReading.setNotes(dto.getTonerNotes());
+
+                        ServiceRequestEntity request = serviceRequestRepository
+                                .findById(existing.getServiceRequestId())
+                                .orElseThrow(() -> new RuntimeException("Solicitud no encontrada con id " + existing.getServiceRequestId()));
+
+                        tonerReading.setMachineId(request.getMachineId());
+                        ReadingTonerEntity savedTonerReading = readingTonerRepository.save(tonerReading);
+                        existing.setTonerReadingId(savedTonerReading.getId());
+                    }
+
+
+
+
+
                     if (dto.getPartsUsed() != null) {
                         existing.setPartsUsed(dto.getPartsUsed());
                     }
@@ -70,6 +101,14 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
 
     private ServiceVisitDto toDto(ServiceVisitEntity e) {
         if (e == null) return null;
+
+
+        // Obtener lectura de toner si existe
+        ReadingTonerEntity tonerReading = null;
+        if (e.getTonerReadingId() != null) {
+            tonerReading = readingTonerRepository.findById(e.getTonerReadingId()).orElse(null);
+        }
+
         return ServiceVisitDto.builder()
                 .id(e.getId())
                 .serviceRequestId(e.getServiceRequestId())
@@ -87,6 +126,17 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 // ✔ Lectura Scanner
                 .scannerReading(e.getMeterReading() != null ? e.getMeterReading().getScannerReading() : null)
                 .readingNotes(e.getMeterReading() != null ? e.getMeterReading().getNotes() : null)
+
+
+
+                // Mediciones de toner (NUEVO)
+                .takeTonerReading(tonerReading != null)
+                .tonerLevelK(tonerReading != null ? tonerReading.getLevelK() : null)
+                .tonerLevelC(tonerReading != null ? tonerReading.getLevelC() : null)
+                .tonerLevelM(tonerReading != null ? tonerReading.getLevelM() : null)
+                .tonerLevelY(tonerReading != null ? tonerReading.getLevelY() : null)
+                .tonerNotes(tonerReading != null ? tonerReading.getNotes() : null)
+                .tonerReadingId(e.getTonerReadingId())
 
                 .build();
     }
