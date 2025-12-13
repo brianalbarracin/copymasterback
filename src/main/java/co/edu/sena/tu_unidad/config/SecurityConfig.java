@@ -49,6 +49,7 @@ public class SecurityConfig {
                         "/service-requests/**",
                         "/reading-toner/**",
                         "/machines/**",
+                        "/root-causes/**",
                         "/visits/**",
                         "/customers/**").permitAll()
                 .anyRequest().authenticated()

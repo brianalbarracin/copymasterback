@@ -75,6 +75,7 @@ public class SecurityConfig {
                         "/visit-parts/**",
                         "/locations/**",
                         "/service-requests/**",
+                        "/reading-toner/**",
                         "/machines/**",
                         "/visits/**",
                         "/customers/**").permitAll()
@@ -497,6 +498,77 @@ public class PartController {
                 .build();
     }
 }
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\ReadingTonerController.java =====
+package co.edu.sena.tu_unidad.controller;
+import co.edu.sena.tu_unidad.dto.ReadingTonerDto;
+import co.edu.sena.tu_unidad.dto.ServerResponseDto;
+import co.edu.sena.tu_unidad.service.ReadingTonerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/reading-toner")
+public class ReadingTonerController {
+    @Autowired
+    private ReadingTonerService readingTonerService;
+
+    @GetMapping("/machine/{machineId}")
+    public ServerResponseDto getReadingsByMachine(@PathVariable Long machineId) {
+        List<ReadingTonerDto> readings = readingTonerService.getReadingsByMachine(machineId);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Lecturas de toner obtenidas")
+                .data(readings)
+                .build();
+    }
+
+    @PostMapping
+    public ServerResponseDto createReading(@RequestBody ReadingTonerDto dto) {
+        ReadingTonerDto created = readingTonerService.createReadingToner(dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Lectura de toner creada")
+                .data(created)
+                .build();
+    }
+
+    @GetMapping("/{id}")
+    public ServerResponseDto getReadingById(@PathVariable Long id) {
+        ReadingTonerDto reading = readingTonerService.getReadingTonerById(id);
+        return ServerResponseDto.builder()
+                .status(reading != null ? HttpStatus.OK.value() : HttpStatus.NOT_FOUND.value())
+                .message(reading != null ? "Lectura encontrada" : "No encontrada")
+                .data(reading)
+                .build();
+    }
+
+    @PutMapping("/{id}")
+    public ServerResponseDto updateReading(@PathVariable Long id, @RequestBody ReadingTonerDto dto) {
+        ReadingTonerDto updated = readingTonerService.updateReadingToner(id, dto);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Lectura de toner actualizada")
+                .data(updated)
+                .build();
+    }
+
+    @DeleteMapping("/{id}")
+    public ServerResponseDto deleteReading(@PathVariable Long id) {
+        readingTonerService.deleteReadingToner(id);
+        return ServerResponseDto.builder()
+                .status(HttpStatus.OK.value())
+                .message("Lectura de toner eliminada")
+                .data(null)
+                .build();
+    }
+
+
+}
+
 
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\controller\ServiceRequestController.java =====
 package co.edu.sena.tu_unidad.controller;
@@ -1040,6 +1112,33 @@ public class MeterReadingDto {
 }
 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ReadingTonerDto.java =====
+package co.edu.sena.tu_unidad.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.OffsetDateTime;
+
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+
+public class ReadingTonerDto {
+    private Long id;
+    private Long machineId;
+    private Long technicianId;
+    private OffsetDateTime readingDate;
+    private String notes;
+    private Integer levelK;  // Black
+    private Integer levelC;  // Cyan
+    private Integer levelM;  // Magenta
+    private Integer levelY;  // Yellow
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\dto\ServerResponseDto.java =====
 package co.edu.sena.tu_unidad.dto;
 
@@ -1133,6 +1232,15 @@ public class ServiceVisitDto {
     private Long scannerReading;
     private String readingNotes;
     private Long machineId;
+    // Mediciones de toner (nuevo)
+    private Boolean takeTonerReading;
+    private Integer tonerLevelK;
+    private Integer tonerLevelC;
+    private Integer tonerLevelM;
+    private Integer tonerLevelY;
+    private String tonerNotes;
+    private Long tonerReadingId; // Para referencia al registro de toner
+
 }
 
 
@@ -1436,6 +1544,64 @@ public class PartEntity {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\ReadingTonerEntity.java =====
+package co.edu.sena.tu_unidad.entity;
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.OffsetDateTime;
+import jakarta.persistence.*;
+import lombok.*;
+import java.time.OffsetDateTime;
+@Entity
+@Table(name = "reading_toner")
+@Data  // ← Esto genera getters y setters automáticamente
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+
+public class ReadingTonerEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "machine_id", nullable = false)
+    private Long machineId;
+
+    @Column(name = "technician_id")
+    private Long technicianId;
+
+    @Column(name = "reading_date", nullable = false)
+    private OffsetDateTime readingDate;
+
+    private String notes;
+
+    @Column(name = "level_k")
+    private Integer levelK;  // Black (0-100%)
+
+    @Column(name = "level_c")
+    private Integer levelC;  // Cyan (0-100%)
+
+    @Column(name = "level_m")
+    private Integer levelM;  // Magenta (0-100%)
+
+    @Column(name = "level_y")
+    private Integer levelY;  // Yellow (0-100%)
+
+    @Column(name = "created_at")
+    private OffsetDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (this.readingDate == null) {
+            this.readingDate = OffsetDateTime.now();
+        }
+        if (this.createdAt == null) {
+            this.createdAt = OffsetDateTime.now();
+        }
+    }
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\entity\ServiceRequestEntity.java =====
 package co.edu.sena.tu_unidad.entity;
 
@@ -1566,6 +1732,38 @@ public class ServiceVisitEntity {
     public void setUpdatedAt(OffsetDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    // NUEVO: Campo para lectura de toner
+    @Column(name = "toner_reading_id")
+    private Long tonerReadingId;
+
+    // Relación opcional con ReadingTonerEntity
+    @OneToOne
+    @JoinColumn(name = "toner_reading_id", insertable = false, updatable = false)
+    private ReadingTonerEntity tonerReading;
+
+    // Callbacks para actualizar timestamps
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = OffsetDateTime.now();
+    }
+
+    @PrePersist
+    public void prePersist() {
+        if (this.createdAt == null) {
+            this.createdAt = OffsetDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = OffsetDateTime.now();
+        }
+    }
+
+    // Método auxiliar para establecer la relación con tonerReading
+    public void assignTonerReading(ReadingTonerEntity tonerReading) {
+        this.tonerReading = tonerReading;
+        this.tonerReadingId = tonerReading != null ? tonerReading.getId() : null;
+    }
+
 
 }
 
@@ -1773,6 +1971,19 @@ public interface PartRepository extends JpaRepository<PartEntity, Long> {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\ReadingTonerRepository.java =====
+package co.edu.sena.tu_unidad.repository;
+
+import co.edu.sena.tu_unidad.entity.ReadingTonerEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface ReadingTonerRepository extends JpaRepository<ReadingTonerEntity, Long> {
+    List<ReadingTonerEntity> findByMachineIdOrderByReadingDateDesc(Long machineId);
+    List<ReadingTonerEntity> findByTechnicianId(Long technicianId);
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\repository\ServiceRequestRepository.java =====
 package co.edu.sena.tu_unidad.repository;
 
@@ -1901,6 +2112,21 @@ public interface MachineService {
 
 
 // 
+
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\ReadingTonerService.java =====
+package co.edu.sena.tu_unidad.service;
+import co.edu.sena.tu_unidad.dto.ReadingTonerDto;
+import java.util.List;
+
+public interface ReadingTonerService {
+
+    List<ReadingTonerDto> getReadingsByMachine(Long machineId);
+    ReadingTonerDto createReadingToner(ReadingTonerDto dto);
+    ReadingTonerDto updateReadingToner(Long id, ReadingTonerDto dto);
+    void deleteReadingToner(Long id);
+    ReadingTonerDto getReadingTonerById(Long id);
+}
+
 
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\ServiceRequestService.java =====
 package co.edu.sena.tu_unidad.service;
@@ -2299,6 +2525,102 @@ public class MachineServiceImpl implements MachineService {
 
 // 
 
+===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\ReadingTonerServiceImpl.java =====
+package co.edu.sena.tu_unidad.service.impl;
+
+import co.edu.sena.tu_unidad.dto.ReadingTonerDto;
+import co.edu.sena.tu_unidad.entity.ReadingTonerEntity;
+import co.edu.sena.tu_unidad.repository.ReadingTonerRepository;
+import co.edu.sena.tu_unidad.service.ReadingTonerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+public class ReadingTonerServiceImpl implements ReadingTonerService{
+    @Autowired
+    private ReadingTonerRepository repository;
+
+    private ReadingTonerDto toDto(ReadingTonerEntity entity) {
+        if (entity == null) return null;
+        return ReadingTonerDto.builder()
+                .id(entity.getId())
+                .machineId(entity.getMachineId())
+                .technicianId(entity.getTechnicianId())
+                .readingDate(entity.getReadingDate())
+                .notes(entity.getNotes())
+                .levelK(entity.getLevelK())
+                .levelC(entity.getLevelC())
+                .levelM(entity.getLevelM())
+                .levelY(entity.getLevelY())
+                .build();
+    }
+
+    private ReadingTonerEntity toEntity(ReadingTonerDto dto) {
+        if (dto == null) return null;
+        return ReadingTonerEntity.builder()
+                .id(dto.getId())
+                .machineId(dto.getMachineId())
+                .technicianId(dto.getTechnicianId())
+                .readingDate(dto.getReadingDate() != null ? dto.getReadingDate() : OffsetDateTime.now())
+                .notes(dto.getNotes())
+                .levelK(dto.getLevelK())
+                .levelC(dto.getLevelC())
+                .levelM(dto.getLevelM())
+                .levelY(dto.getLevelY())
+                .build();
+    }
+
+    @Override
+    public List<ReadingTonerDto> getReadingsByMachine(Long machineId) {
+        return repository.findByMachineIdOrderByReadingDateDesc(machineId)
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public ReadingTonerDto createReadingToner(ReadingTonerDto dto) {
+        ReadingTonerEntity entity = toEntity(dto);
+        entity = repository.save(entity);
+        return toDto(entity);
+    }
+
+    @Override
+    public ReadingTonerDto updateReadingToner(Long id, ReadingTonerDto dto) {
+        return repository.findById(id)
+                .map(existing -> {
+                    if (dto.getLevelK() != null) existing.setLevelK(dto.getLevelK());
+                    if (dto.getLevelC() != null) existing.setLevelC(dto.getLevelC());
+                    if (dto.getLevelM() != null) existing.setLevelM(dto.getLevelM());
+                    if (dto.getLevelY() != null) existing.setLevelY(dto.getLevelY());
+                    if (dto.getNotes() != null) existing.setNotes(dto.getNotes());
+                    if (dto.getReadingDate() != null) existing.setReadingDate(dto.getReadingDate());
+
+                    ReadingTonerEntity saved = repository.save(existing);
+                    return toDto(saved);
+                })
+                .orElseThrow(() -> new RuntimeException("Lectura de toner no encontrada con id: " + id));
+    }
+
+    @Override
+    public void deleteReadingToner(Long id) {
+        repository.deleteById(id);
+    }
+
+    @Override
+    public ReadingTonerDto getReadingTonerById(Long id) {
+        return repository.findById(id)
+                .map(this::toDto)
+                .orElse(null);
+    }
+
+
+}
+
+
 ===== C:\Users\LENOVO\Desktop\Webpage\irrigex\back2\src\main\java\co\edu\sena\tu_unidad\service\impl\RequestCounterInitializer.java =====
 package co.edu.sena.tu_unidad.service.impl;
 
@@ -2560,6 +2882,8 @@ import co.edu.sena.tu_unidad.entity.ServiceRequestEntity;
 import co.edu.sena.tu_unidad.repository.MeterReadingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import co.edu.sena.tu_unidad.entity.ReadingTonerEntity;
+import co.edu.sena.tu_unidad.repository.ReadingTonerRepository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -2574,6 +2898,8 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
     private ServiceRequestRepository serviceRequestRepository;
     @Autowired
     private MeterReadingRepository meterReadingRepository;
+    @Autowired
+    private ReadingTonerRepository readingTonerRepository;  // Nuevo
 
     @Override
     public ServiceVisitDto updateServiceVisit(Long id, ServiceVisitDto dto) {
@@ -2604,6 +2930,33 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                         existing.setMeterReading(reading);
                     }
 
+// Manejo de medición de toner (NUEVO)
+                    if (Boolean.TRUE.equals(dto.getTakeTonerReading()) &&
+                            (dto.getTonerLevelK() != null || dto.getTonerLevelC() != null ||
+                                    dto.getTonerLevelM() != null || dto.getTonerLevelY() != null)) {
+
+                        ReadingTonerEntity tonerReading = new ReadingTonerEntity();
+                        tonerReading.setLevelK(dto.getTonerLevelK());
+                        tonerReading.setLevelC(dto.getTonerLevelC());
+                        tonerReading.setLevelM(dto.getTonerLevelM());
+                        tonerReading.setLevelY(dto.getTonerLevelY());
+                        tonerReading.setReadingDate(OffsetDateTime.now());
+                        tonerReading.setTechnicianId(dto.getTechnicianId());
+                        tonerReading.setNotes(dto.getTonerNotes());
+
+                        ServiceRequestEntity request = serviceRequestRepository
+                                .findById(existing.getServiceRequestId())
+                                .orElseThrow(() -> new RuntimeException("Solicitud no encontrada con id " + existing.getServiceRequestId()));
+
+                        tonerReading.setMachineId(request.getMachineId());
+                        ReadingTonerEntity savedTonerReading = readingTonerRepository.save(tonerReading);
+                        existing.setTonerReadingId(savedTonerReading.getId());
+                    }
+
+
+
+
+
                     if (dto.getPartsUsed() != null) {
                         existing.setPartsUsed(dto.getPartsUsed());
                     }
@@ -2620,6 +2973,14 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
 
     private ServiceVisitDto toDto(ServiceVisitEntity e) {
         if (e == null) return null;
+
+
+        // Obtener lectura de toner si existe
+        ReadingTonerEntity tonerReading = null;
+        if (e.getTonerReadingId() != null) {
+            tonerReading = readingTonerRepository.findById(e.getTonerReadingId()).orElse(null);
+        }
+
         return ServiceVisitDto.builder()
                 .id(e.getId())
                 .serviceRequestId(e.getServiceRequestId())
@@ -2637,6 +2998,17 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 // ✔ Lectura Scanner
                 .scannerReading(e.getMeterReading() != null ? e.getMeterReading().getScannerReading() : null)
                 .readingNotes(e.getMeterReading() != null ? e.getMeterReading().getNotes() : null)
+
+
+
+                // Mediciones de toner (NUEVO)
+                .takeTonerReading(tonerReading != null)
+                .tonerLevelK(tonerReading != null ? tonerReading.getLevelK() : null)
+                .tonerLevelC(tonerReading != null ? tonerReading.getLevelC() : null)
+                .tonerLevelM(tonerReading != null ? tonerReading.getLevelM() : null)
+                .tonerLevelY(tonerReading != null ? tonerReading.getLevelY() : null)
+                .tonerNotes(tonerReading != null ? tonerReading.getNotes() : null)
+                .tonerReadingId(e.getTonerReadingId())
 
                 .build();
     }

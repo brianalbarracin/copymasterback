@@ -72,6 +72,8 @@ public class ServiceRequestEntity {
             this.requestNumber = String.valueOf(requestCounter++);
         }
     }*/
+    @Column(name = "root_cause_id")
+    private Long rootCauseId;
 }
 
 

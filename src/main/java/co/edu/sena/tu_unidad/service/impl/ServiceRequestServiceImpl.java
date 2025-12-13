@@ -81,18 +81,41 @@ public class ServiceRequestServiceImpl implements ServiceRequestService {
         e.setReportedChannel(dto.getReportedChannel());
         e.setServiceType(dto.getServiceType());
         e.setDescription(dto.getDescription());
-        e.setRootCause(dto.getRootCause());
+        // CAMBIO AQUÍ: Ahora guardamos rootCauseId en lugar de rootCause (texto)
+        if (dto.getRootCauseId() != null) {
+            e.setRootCauseId(dto.getRootCauseId());
+        } else {
+            // Mantener compatibilidad con el campo anterior si es necesario
+            e.setRootCause(dto.getRootCause());
+        }
+
+
         e.setStatus(dto.getStatus() != null ? dto.getStatus() : "abierto");
         e.setIsRepeated(false);
         e.setCreatedAt(OffsetDateTime.now());
 
         // lógica básica para marcar repetido (ejemplo: buscar anterior en 30 días)
-        if (e.getMachineId() != null && e.getRootCause() != null) {
+        /*if (e.getMachineId() != null && e.getRootCause() != null) {
             OffsetDateTime threshold = e.getReportedAt().minus(30, ChronoUnit.DAYS);
             ServiceRequestEntity prior = repo.findTopByMachineIdAndRootCauseAndReportedAtAfterOrderByReportedAtAsc(e.getMachineId(), e.getRootCause(), threshold);
             if (prior != null) {
                 e.setIsRepeated(true);
                 e.setRepeatedOfRequestId(prior.getId());
+            }
+        }*/
+
+        if (e.getMachineId() != null && e.getRootCauseId() != null) {
+            // Modificar esta lógica para buscar por rootCauseId en lugar de texto
+            // Tendrías que crear un método en el repositorio para buscar por rootCauseId
+            // Por ahora mantenemos la lógica existente
+            if (e.getRootCause() != null) {
+                OffsetDateTime threshold = e.getReportedAt().minus(30, ChronoUnit.DAYS);
+                ServiceRequestEntity prior = repo.findTopByMachineIdAndRootCauseAndReportedAtAfterOrderByReportedAtAsc(
+                        e.getMachineId(), e.getRootCause(), threshold);
+                if (prior != null) {
+                    e.setIsRepeated(true);
+                    e.setRepeatedOfRequestId(prior.getId());
+                }
             }
         }
 

@@ -33,6 +33,7 @@ public class ServiceRequestDto {
     private OffsetDateTime assignedAt;
     private OffsetDateTime closedAt;
     private String resolution;
+    private Long rootCauseId;
 }
 
 
