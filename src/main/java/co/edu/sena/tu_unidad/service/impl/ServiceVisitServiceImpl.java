@@ -50,6 +50,23 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                     }
 
 
+
+                    if (existing.getStartTime() == null && dto.getStartTime() != null) {
+                        existing.setStartTime(dto.getStartTime());
+                    }
+
+                    if (existing.getEndTime() == null && dto.getEndTime() != null) {
+                        existing.setEndTime(dto.getEndTime());
+                    }
+
+                    // Validar que endTime sea después de startTime
+                    if (existing.getStartTime() != null && existing.getEndTime() != null) {
+                        if (existing.getEndTime().isBefore(existing.getStartTime())) {
+                            throw new RuntimeException("La hora de finalización debe ser posterior a la hora de inicio");
+                        }
+                    }
+
+
                     // Manejo de medición
                     if (Boolean.TRUE.equals(dto.getTakeMeterReading()) && dto.getReading() != null) {
                         MeterReadingEntity reading = new MeterReadingEntity();
@@ -171,6 +188,10 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 .rootCauseId(e.getRootCauseId())
                 .rootCauseName(rootCauseName)
                 .rootCauseCategory(rootCauseCategory)
+
+                .startTime(e.getStartTime())
+                .endTime(e.getEndTime())
+
 
                 .build();
     }

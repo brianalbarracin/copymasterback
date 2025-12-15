@@ -68,6 +68,12 @@ public class ServiceVisitEntity {
 
 
 
+    @Column(name = "start_time")
+    private OffsetDateTime startTime;
+
+    @Column(name = "end_time")
+    private OffsetDateTime endTime;
+
     // Callbacks para actualizar timestamps
     @PreUpdate
     public void preUpdate() {

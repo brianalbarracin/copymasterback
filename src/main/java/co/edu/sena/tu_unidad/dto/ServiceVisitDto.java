@@ -42,6 +42,9 @@ public class ServiceVisitDto {
     private String rootCauseName;
     private String rootCauseCategory;
 
+    private OffsetDateTime startTime;
+    private OffsetDateTime endTime;
+
 
 }
 
