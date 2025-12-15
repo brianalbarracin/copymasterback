@@ -52,10 +52,21 @@ public class ServiceVisitEntity {
     @Column(name = "toner_reading_id")
     private Long tonerReadingId;
 
+    // NUEVO: Campo para causa raíz específica de la visita
+    @Column(name = "root_cause_id")
+    private Long rootCauseId;
+
     // Relación opcional con ReadingTonerEntity
     @OneToOne
     @JoinColumn(name = "toner_reading_id", insertable = false, updatable = false)
     private ReadingTonerEntity tonerReading;
+
+    // NUEVO: Relación con RootCauseEntity
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "root_cause_id", insertable = false, updatable = false)
+    private RootCauseEntity rootCause;
+
+
 
     // Callbacks para actualizar timestamps
     @PreUpdate
@@ -77,6 +88,12 @@ public class ServiceVisitEntity {
     public void assignTonerReading(ReadingTonerEntity tonerReading) {
         this.tonerReading = tonerReading;
         this.tonerReadingId = tonerReading != null ? tonerReading.getId() : null;
+    }
+
+    // NUEVO: Método auxiliar para establecer la relación con rootCause
+    public void assignRootCause(RootCauseEntity rootCause) {
+        this.rootCause = rootCause;
+        this.rootCauseId = rootCause != null ? rootCause.getId() : null;
     }
 
 

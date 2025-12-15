@@ -37,6 +37,12 @@ public class ServiceVisitDto {
     private String tonerNotes;
     private Long tonerReadingId; // Para referencia al registro de toner
 
+    // NUEVO: Campos para causa raíz de la visita
+    private Long rootCauseId;
+    private String rootCauseName;
+    private String rootCauseCategory;
+
+
 }
 
 

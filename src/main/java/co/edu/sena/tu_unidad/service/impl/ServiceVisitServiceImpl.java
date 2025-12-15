@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import co.edu.sena.tu_unidad.entity.ReadingTonerEntity;
 import co.edu.sena.tu_unidad.repository.ReadingTonerRepository;
+import co.edu.sena.tu_unidad.repository.RootCauseRepository;
+import co.edu.sena.tu_unidad.entity.RootCauseEntity;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -29,6 +31,10 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
     @Autowired
     private ReadingTonerRepository readingTonerRepository;  // Nuevo
 
+    @Autowired
+    private RootCauseRepository rootCauseRepository; // NUEVO
+
+
     @Override
     public ServiceVisitDto updateServiceVisit(Long id, ServiceVisitDto dto) {
         return repo.findById(id)
@@ -36,6 +42,13 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                     existing.setTechnicianId(dto.getTechnicianId());
                     existing.setVisitNotes(dto.getVisitNotes());
                     existing.setSolved(dto.getSolved() != null ? dto.getSolved() : false);
+
+                    if (dto.getRootCauseId() != null) {
+                        RootCauseEntity rootCause = rootCauseRepository.findById(dto.getRootCauseId())
+                                .orElseThrow(() -> new RuntimeException("Causa raíz no encontrada con id " + dto.getRootCauseId()));
+                        existing.assignRootCause(rootCause);
+                    }
+
 
                     // Manejo de medición
                     if (Boolean.TRUE.equals(dto.getTakeMeterReading()) && dto.getReading() != null) {
@@ -109,6 +122,22 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
             tonerReading = readingTonerRepository.findById(e.getTonerReadingId()).orElse(null);
         }
 
+        // NUEVO: Obtener información de causa raíz si existe
+        String rootCauseName = null;
+        String rootCauseCategory = null;
+        if (e.getRootCause() != null) {
+            rootCauseName = e.getRootCause().getName();
+            rootCauseCategory = e.getRootCause().getCategory();
+        } else if (e.getRootCauseId() != null) {
+            // Si solo tenemos el ID, buscar la entidad
+            RootCauseEntity rootCause = rootCauseRepository.findById(e.getRootCauseId()).orElse(null);
+            if (rootCause != null) {
+                rootCauseName = rootCause.getName();
+                rootCauseCategory = rootCause.getCategory();
+            }
+        }
+
+
         return ServiceVisitDto.builder()
                 .id(e.getId())
                 .serviceRequestId(e.getServiceRequestId())
@@ -138,6 +167,11 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
                 .tonerNotes(tonerReading != null ? tonerReading.getNotes() : null)
                 .tonerReadingId(e.getTonerReadingId())
 
+                // NUEVO: Información de causa raíz
+                .rootCauseId(e.getRootCauseId())
+                .rootCauseName(rootCauseName)
+                .rootCauseCategory(rootCauseCategory)
+
                 .build();
     }
 
@@ -152,6 +186,16 @@ public class ServiceVisitServiceImpl implements ServiceVisitService {
         e.setMeterReadingAfter(dto.getMeterReadingAfter());
         e.setSolved(dto.getSolved() != null ? dto.getSolved() : false);
         e.setCreatedAt(OffsetDateTime.now());
+
+        // NUEVO: Asignar causa raíz si se proporciona
+        if (dto.getRootCauseId() != null) {
+            RootCauseEntity rootCause = rootCauseRepository.findById(dto.getRootCauseId())
+                    .orElseThrow(() -> new RuntimeException("Causa raíz no encontrada con id " + dto.getRootCauseId()));
+            e.assignRootCause(rootCause);
+        }
+
+
+
         // partsUsed serialized to JSON if dto.partsUsed != null -> left as null for now
         if (dto.getPartsUsed() != null) {
             e.setPartsUsed(dto.getPartsUsed());
